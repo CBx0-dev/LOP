@@ -1,0 +1,52 @@
+extern func gc_mark(): void;
+extern func gc_sweep(): void;
+extern func gc_mark_sweep(): void;
+
+extern func string_dump(str: String): void;
+extern func string_concat(left: String, right: String): String;
+extern func string_substring(left: String, start: i32, end: i32): String;
+extern func string_char_at(left: String, index: i32): char;
+extern func string_equals(left: String, right: String): bool;
+
+extern func fs_read_file(path: String): String;
+
+extern type String {
+    buff: Span<char>;
+    length: i32;
+}
+
+func main(): i32 {
+    let exit: i32 = entry();
+    gc_mark_sweep();
+
+    return exit;
+}
+
+func entry(): i32 {
+    let files: ObjectList = list_init();
+    list_push(files, "./input/main.lop");
+    list_push(files, "./input/char.lop");
+    list_push(files, "./input/main.lop");
+    list_push(files, "./input/list.lop");
+    list_push(files, "./input/lexer.lop");
+    list_push(files, "./input/parser.lop");
+    list_push(files, "./input/conversion.lop");
+    list_push(files, "./input/scope.lop");
+    list_push(files, "./input/binder.lop");
+
+    let units: ObjectList = list_init();
+
+    let i: i32 = 0;
+    while (i < files.length) {
+        let file: String = <String>list_get_value(files, i);
+        i = i + 1;
+
+        let content: String = fs_read_file(file);
+        let parser: Parser = parser_init(file, content);
+        let unit: CompilationUnit = parse_compilation_unit(parser);
+
+        list_push(units, unit);
+    }
+
+    return 0;
+}

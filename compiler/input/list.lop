@@ -1,0 +1,166 @@
+
+type ObjectListItem {
+    value: Object;
+    next: ObjectListItem;
+    prev: ObjectListItem;
+}
+
+type ObjectList {
+    first: ObjectListItem;
+    last: ObjectListItem;
+    length: i32;
+}
+
+type ObjectListIterator {
+    current: ObjectListItem;
+    index: i32;
+    length: i32;
+}
+
+
+func list_init(): ObjectList {
+    let list: ObjectList = new ObjectList();
+    list.length = 0;
+    list.first = null;
+    list.last = null;
+
+    return list;
+}
+
+func list_push(list: ObjectList, value: Object): void {
+    let item: ObjectListItem = new ObjectListItem();
+    item.value = value;
+    item.next = null;
+    item.prev = null;
+    
+    list.length = list.length + 1;
+
+    if (list.first == null && list.last == null) {
+        list.first = item;
+        list.last = item;
+        return;    
+    }
+
+    list.last.next = item;
+    item.prev = list.last;
+
+    list.last = item;
+}
+
+func list_unshift(list: ObjectList, value: Object): void {
+    let item: ObjectListItem = new ObjectListItem();
+    item.value = value;
+    item.next = null;
+    item.prev = null;
+
+    list.length = list.length + 1;
+
+    if (list.first == null && list.last == null) {
+        list.first = item;
+        list.last = item;
+        return;
+    }
+
+    list.first.prev = item;
+    item.next = list.first;
+
+    list.first = item;
+}
+
+func list_pop(list: ObjectList): Object {
+    if (list.last == null) {
+        return null;
+    }
+
+    let value: Object = list.last.value;
+    
+    list.last.prev.next = null;
+    list.last = list.last.prev;
+    list.length = list.length - 1;
+
+    return value;
+}
+
+func list_shift(list: ObjectList): Object {
+    if (list.first == null) {
+        return null;
+    }
+
+    let value: Object = list.first.value;
+
+    list.first.next.prev = null;
+    list.first = list.first.next;
+    list.length = list.length - 1;
+
+    return value;
+}
+
+func list_get_value(list: ObjectList, index: i32): Object {
+    if (index < 0 || index >= list.length) {
+        return null;
+    }
+
+    let i: i32 = 0;
+    let curr: ObjectListItem = list.first;
+    while (i < index) {
+        curr = curr.next;
+        i = i + 1;
+    }
+
+    return curr.value;
+}
+
+func list_concat(left: ObjectList, right: ObjectList): ObjectList {
+    let result: ObjectList = list_init();
+    
+    let iter: ObjectListIterator = list_iterator(left);
+    while (list_iterator_has_next(iter)) {
+        let value: Object = list_iterator_next(iter);
+        list_push(result, value);
+    }
+
+    iter = list_iterator(right);
+    while (list_iterator_has_next(iter)) {
+        let value: Object = list_iterator_next(iter);
+        list_push(result, value);
+    }
+
+    return result;
+}
+
+func list_dup(list: ObjectList): ObjectList {
+    let result: ObjectList = list_init();
+
+    let iter: ObjectListIterator = list_iterator(list);
+    while (list_iterator_has_next(iter)) {
+        let value: Object = list_iterator_next(iter);
+        list_push(result, value);
+    }
+
+    return result;
+} 
+
+func list_iterator(list: ObjectList): ObjectListIterator {
+    let iterator: ObjectListIterator = new ObjectListIterator();
+   
+    iterator.current = list.first;
+    iterator.index = 0;
+    iterator.length = list.length;
+
+    return iterator;
+}
+
+func list_iterator_has_next(iterator: ObjectListIterator): bool {
+    return iterator.index < iterator.length;
+}
+
+func list_iterator_next(iterator: ObjectListIterator): Object {
+    let value: Object = null;
+    if (iterator.current != null) {
+        value = iterator.current.value;
+        iterator.current = iterator.current.next;
+    }
+
+    iterator.index = iterator.index + 1;
+    return value;
+}

@@ -1,0 +1,15 @@
+func char_is_alpha(c: char): bool {
+    return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z';
+}
+
+func char_is_numeric(c: char): bool {
+    return c >= '0' && c <= '9';
+}
+
+func char_is_alpha_numeric(c: char): bool {
+    return char_is_alpha(c) || char_is_numeric(c);
+}
+
+func char_is_whitespace(c: char): bool {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}

@@ -1,0 +1,353 @@
+enum TokenKind {
+    ERROR,
+    EOF,
+    WHITESPACE,
+    SINGLE_COMMENT,
+    MULTI_COMMENT,
+
+    IDENTIFIER,
+    INTEGER_LITERAL,
+    CHAR_LITERAL,
+    STRING_LITERAL,
+
+    TYPE_KEYWORD,
+    FUNCTION_KEYWORD,
+    ENUM_KEYWORD,
+    LET_KEYWORD,
+    NEW_KEYWORD,
+    IF_KEYWORD,
+    ELSE_KEYWORD,
+    WHILE_KEYWORD,
+    RETURN_KEYWORD,
+    TRUE_KEYWORD,
+    FALSE_KEYWORD,
+    EXTERN_KEYWORD,
+    NULL_KEYWORD,
+    BREAK_KEYWORD,
+    CONTINUE_KEYWORD,
+    IS_KEYWORD,
+
+    COLON,
+    LPAREN,
+    RPAREN,
+    LBRACE,
+    RBRACE,
+    SEMICOLON,
+    EQUALS,
+    EQUALS_EQUALS,
+    BANG,
+    BANG_EQUALS,
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    AND,
+    AND_AND,
+    OR,
+    OR_OR,
+    LANGLE,
+    LANGLE_EQUALS,
+    RANGLE,
+    RANGLE_EQUALS,
+    COMMA,
+    DOT,
+}
+
+type Lexer {
+    filename: String;
+    content: String;
+    position: i32;
+}
+
+type Token {
+    kind: TokenKind;
+    value: String;
+}
+
+func lexer_init(filename: String, content: String): Lexer {
+    let lexer: Lexer = new Lexer();
+    
+    lexer.filename = filename;
+    lexer.content = content;
+    lexer.position = 0;
+
+    return lexer;
+}
+
+func token_init(kind: TokenKind, value: String): Token {
+    let token: Token = new Token();
+    
+    token.kind = kind;
+    token.value = value;
+
+    return token;
+}
+
+func lexer_is_eof(lexer: Lexer): bool {
+    return lexer.position >= lexer.content.length;
+}
+
+func current_char(lexer: Lexer): char {
+    if (lexer_is_eof(lexer)) {
+        return '\0';
+    }
+
+    return string_char_at(lexer.content, lexer.position);
+}
+
+func peek_char(lexer: Lexer): char {
+    if (lexer.position + 1 >= lexer.content.length) {
+        return '\0';
+    }
+
+    return string_char_at(lexer.content, lexer.position + 1);
+}
+
+func next_char(lexer: Lexer): char {
+    let c: char = current_char(lexer);
+    
+    lexer.position = lexer.position + 1;
+    
+    return c;
+}
+
+func lex_whitespace(lexer: Lexer): Token {
+    let start: i32 = lexer.position;
+    while (char_is_whitespace(current_char(lexer)) && !lexer_is_eof(lexer)) {
+        lexer.position = lexer.position + 1;
+    }
+
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    return token_init(TokenKind.WHITESPACE, value);
+}
+
+func lex_identifier(lexer: Lexer): Token {
+    let start: i32 = lexer.position;
+    while ((char_is_alpha_numeric(current_char(lexer)) || current_char(lexer) == '_') && !lexer_is_eof(lexer)) {
+        next_char(lexer);
+    }
+
+    let kind: TokenKind = TokenKind.IDENTIFIER;
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    
+    if (string_equals(value, "type")) {
+        kind = TokenKind.TYPE_KEYWORD;
+    } else if (string_equals(value, "func")) {
+        kind = TokenKind.FUNCTION_KEYWORD;
+    } else if (string_equals(value, "enum")) {
+        kind = TokenKind.ENUM_KEYWORD;
+    } else if (string_equals(value, "let")) {
+        kind = TokenKind.LET_KEYWORD;
+    } else if (string_equals(value, "new")) {
+        kind = TokenKind.NEW_KEYWORD;
+    } else if (string_equals(value, "if")) {
+        kind = TokenKind.IF_KEYWORD;
+    } else if (string_equals(value, "else")) {
+        kind = TokenKind.ELSE_KEYWORD;
+    } else if (string_equals(value, "while")) {
+        kind = TokenKind.WHILE_KEYWORD;
+    } else if (string_equals(value, "return")) {
+        kind = TokenKind.RETURN_KEYWORD;
+    } else if (string_equals(value, "true")) {
+        kind = TokenKind.TRUE_KEYWORD;
+    } else if (string_equals(value, "false")) {
+        kind = TokenKind.FALSE_KEYWORD;
+    } else if (string_equals(value, "extern")) {
+        kind = TokenKind.EXTERN_KEYWORD;
+    } else if (string_equals(value, "null")) {
+        kind = TokenKind.NULL_KEYWORD;
+    } else if (string_equals(value, "break")) {
+        kind = TokenKind.BREAK_KEYWORD;
+    } else if (string_equals(value, "continue")) {
+        kind = TokenKind.CONTINUE_KEYWORD;
+    } else if (string_equals(value, "is")) {
+        kind = TokenKind.IS_KEYWORD;
+    }
+
+    return token_init(kind, value);
+}
+
+func lex_numeric(lexer: Lexer): Token {
+    // TODO parse floating point literals
+    let start: i32 = lexer.position;
+    while (char_is_numeric(current_char(lexer)) && !lexer_is_eof(lexer)) {
+        next_char(lexer);
+    }
+
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    return token_init(TokenKind.INTEGER_LITERAL, value);
+}
+
+func lex_char(lexer: Lexer): Token {
+    let start: i32 = lexer.position;
+    next_char(lexer); // "'"
+    let c: char = next_char(lexer);
+    if (c == '\\') {
+        // TODO validate escape sequence
+        next_char(lexer);
+    }
+
+    if (current_char(lexer) != '\'') {
+        PANIC("Missing char close");
+    }
+
+    next_char(lexer); // "'"
+
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    return token_init(TokenKind.CHAR_LITERAL, value);
+}
+
+func lex_string(lexer: Lexer): Token {
+    let start: i32 = lexer.position;
+    next_char(lexer);
+
+    while (current_char(lexer) != '"' && !lexer_is_eof(lexer)) {
+        if (current_char(lexer) == '\\') {
+            next_char(lexer);
+            next_char(lexer);
+        }
+        next_char(lexer);
+    }
+
+    if (current_char(lexer) != '"') {
+        PANIC("Missing string close");
+    }
+    next_char(lexer);
+
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    return token_init(TokenKind.STRING_LITERAL, value);
+}
+
+func lex_single_line_comment(lexer: Lexer): Token {
+    let start: i32 = lexer.position;
+    while (current_char(lexer) != '\n' && !lexer_is_eof(lexer)) {
+        next_char(lexer);
+    }
+
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    return token_init(TokenKind.SINGLE_COMMENT, value);
+}
+
+func lex_multi_line_comment(lexer: Lexer): Token {
+    let start: i32 = lexer.position;
+    while ((current_char(lexer) != '*' || peek_char(lexer) != '/') && !lexer_is_eof(lexer)) {
+        next_char(lexer);
+    }
+
+    next_char(lexer);
+    next_char(lexer);
+
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    return token_init(TokenKind.MULTI_COMMENT, value);
+}
+
+func lexer_next_token(lexer: Lexer): Token {
+    if (lexer_is_eof(lexer)) {
+        return token_init(TokenKind.EOF, "");
+    }
+
+    if (char_is_whitespace(current_char(lexer))) {
+        return lex_whitespace(lexer);
+    }
+
+    if (char_is_alpha(current_char(lexer)) || current_char(lexer) == '_') {
+        return lex_identifier(lexer);
+    }
+
+    if (char_is_numeric(current_char(lexer))) {
+        return lex_numeric(lexer);
+    }
+
+    if (current_char(lexer) == '\'') {
+        return lex_char(lexer);
+    }
+
+    if (current_char(lexer) == '"') {
+        return lex_string(lexer);
+    }
+
+    if (current_char(lexer) == '/' && peek_char(lexer) == '/') {
+        return lex_single_line_comment(lexer);
+    }
+
+    if (current_char(lexer) == '/' && peek_char(lexer) == '*') {
+        return lex_single_line_comment(lexer);
+    }
+
+    let start: i32 = lexer.position;
+    let curr: char = next_char(lexer);
+    let kind: TokenKind;
+
+    if (curr == '(') {
+        kind = TokenKind.LPAREN;
+    } else if (curr == ')') {
+        kind = TokenKind.RPAREN;
+    } else if (curr == '{') {
+        kind = TokenKind.LBRACE;
+    } else if (curr == '}') {
+        kind = TokenKind.RBRACE;
+    } else if (curr == ';') {
+        kind = TokenKind.SEMICOLON;
+    } else if (curr == ':') {
+        kind = TokenKind.COLON;
+    } else if (curr == '=') {
+        if (current_char(lexer) == '=') {
+            next_char(lexer);
+            kind = TokenKind.EQUALS_EQUALS;
+        } else {
+            kind = TokenKind.EQUALS;
+        }
+    } else if (curr == '!') {
+        if (current_char(lexer) == '=') {
+            next_char(lexer);
+            kind = TokenKind.BANG_EQUALS;
+        } else {
+            kind = TokenKind.BANG;
+        }
+    } else if (curr == '+') {
+        kind = TokenKind.PLUS;
+    } else if (curr == '-') {
+        kind = TokenKind.MINUS;
+    } else if (curr == '*') {
+        kind = TokenKind.STAR;
+    } else if (curr == '/') {
+        kind = TokenKind.SLASH;
+    } else if (curr == '&') {
+        if (current_char(lexer) == '&') {
+            next_char(lexer);
+            kind = TokenKind.AND_AND;
+        } else {
+            kind = TokenKind.AND;
+        }
+    } else if (curr == '|') {
+        if (current_char(lexer) == '|') {
+            next_char(lexer);
+            kind = TokenKind.OR_OR;
+        } else {
+            kind = TokenKind.OR;
+        }
+    } else if (curr == '<') {
+        if (current_char(lexer) == '=') {
+            next_char(lexer);
+            kind = TokenKind.LANGLE_EQUALS;
+        } else {
+            kind = TokenKind.LANGLE;
+        }
+    } else if (curr == '>') {
+        if (current_char(lexer) == '=') {
+            next_char(lexer);
+            kind = TokenKind.RANGLE_EQUALS;
+        } else {
+            kind = TokenKind.RANGLE;
+        }
+    } else if (curr == ',') {
+        kind = TokenKind.COMMA;
+    } else if (curr == '.') {
+        kind = TokenKind.DOT;
+    } else {
+        kind = TokenKind.ERROR;
+    }
+
+    let value: String = string_substring(lexer.content, start, lexer.position);
+    return token_init(kind, value);
+}

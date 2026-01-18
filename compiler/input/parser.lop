@@ -1,0 +1,1101 @@
+type Parser {
+    tokens: ObjectList;
+    position: i32;
+}
+
+type CompilationUnit {
+    externTypes: ObjectList;
+    types: ObjectList;
+    externFunctions: ObjectList;
+    functions: ObjectList;
+    enums: ObjectList;
+    eof: Token;
+}
+
+type TypeMemberItem {
+    identifier: Token;
+    typeClause: TypeClause;
+    semicolons: ObjectList;
+}
+
+type ExternTypeMember {
+    extern_: Token;
+    keyword: Token;
+    identifier: Token;
+    lBrace: Token;
+    items: ObjectList;
+    rBrace: Token;
+    semicolons: ObjectList;
+}
+
+type TypeMember {
+    keyword: Token;
+    identifier: Token;
+    lBrace: Token;
+    items: ObjectList;
+    rBrace: Token;
+    semicolons: ObjectList;
+}
+
+type FunctionMemberParameter {
+    identifier: Token;
+    typeClause: TypeClause;
+    comma: Token;
+}
+
+type ExternFunctionMember {
+    extern_: Token;
+    keyword: Token;
+    identifier: Token;
+    lParen: Token;
+    parameters: ObjectList;
+    rParen: Token;
+    returnType: TypeClause;
+    semicolons: ObjectList;
+}
+
+type FunctionMember {
+    keyword: Token;
+    identifier: Token;
+    lParen: Token;
+    parameters: ObjectList;
+    rParen: Token;
+    returnType: TypeClause;
+    body: BlockStatement;
+}
+
+type EnumMemberItem {
+    identifier: Token;
+    comma: Token;
+}
+
+type EnumMember {
+    keyword: Token;
+    identifier: Token;
+    lBrace: Token;
+    items: ObjectList;
+    rBrace: Token;
+    semicolons: ObjectList;
+}
+
+type BlockStatement {
+    lBrace: Token;
+    statements: ObjectList;
+    rBrace: Token;
+    semicolons: ObjectList;
+}
+
+type VariableStatement {
+    keyword: Token;
+    identifier: Token;
+    typeClause: TypeClause;
+    equals: Token;
+    initializer: Object;
+    semicolons: ObjectList;
+}
+
+type ElseCase {
+    keyword: Token;
+    thenCase: Object;
+}
+
+type IfStatement {
+    keyword: Token;
+    lParen: Token;
+    condition: Object;
+    rParen: Token;
+    thenCase: Object;
+    elseCase: ElseCase;
+}
+
+type WhileStatement {
+    keyword: Token;
+    lParen: Token;
+    condition: Object;
+    rParen: Object;
+    body: Object;
+}
+
+type ReturnStatement {
+    keyword: Token;
+    value: Object;
+    semicolons: ObjectList;
+}
+
+type BreakStatement {
+    keyword: Token;
+    semicolons: ObjectList;
+}
+
+type ContinueStatement {
+    keyword: Token;
+    semicolons: ObjectList;
+}
+
+type ExpressionStatement {
+    expression: Object;
+    semicolons: ObjectList;
+}
+
+type CtorExpression {
+    keyword: Token;
+    typeSignature: TypeSignature;
+    lParen: Token;
+    rParen: Token;
+}
+
+type AssignmentExpression {
+    left: Object;
+    operator: Token;
+    right: Object;
+}
+
+type UnaryExpression {
+    operator: Token;
+    right: Object;
+}
+
+type BinaryExpression {
+    left: Object;
+    operator: Token;
+    right: Object;
+}
+
+type CallExpressionArgument {
+    expression: Object;
+    comma: Token;
+}
+
+type CallExpression {
+    callee: Object;
+    lParen: Token;
+    arguments: ObjectList;
+    rParen: Token;
+}
+
+type MemberExpression {
+    object: Object;
+    dot: Token;
+    identifier: Token;
+}
+
+type IsExpression {
+    left: Object;
+    keyword: Token;
+    typeSignature: TypeSignature;
+}
+
+type LiteralExpression {
+    value: Token;
+}
+
+type ParenExpression {
+    lParen: Token;
+    expression: Object;
+    rParen: Token;
+}
+
+type CastExpression {
+    lAngle: Token;
+    typeSignature: TypeSignature;
+    rAngle: Token;
+    expression: Object;
+}
+
+type TypeClause {
+    colon: Token;
+    typeSignature: TypeSignature;
+}
+
+type TypeSignatureDynamicGeneric {
+    typeSignature: TypeSignature;
+    comma: Token;
+}
+
+type TypeSignatureDynamic {
+    lAngle: Token;
+    generics: ObjectList;
+    rAngle: Token;
+}
+
+type TypeSignature {
+    identifier: Token;
+    dynamic: TypeSignatureDynamic; 
+}
+
+func parser_init(filename: String, content: String): Parser {
+    let lexer: Lexer = lexer_init(filename, content);
+    let tokens: ObjectList = list_init();
+    let token: Token = lexer_next_token(lexer);
+    while (token.kind != TokenKind.EOF) {
+        if (token.kind != TokenKind.ERROR &&
+            token.kind != TokenKind.WHITESPACE &&
+            token.kind != TokenKind.SINGLE_COMMENT &&
+            token.kind != TokenKind.MULTI_COMMENT) {
+                list_push(tokens, token);
+            }
+        token = lexer_next_token(lexer);
+    }
+
+    // Push EOF token
+    list_push(tokens, token);
+
+    // Destroy lexer and collect unnesseary tokens
+    lexer = null;
+    gc_mark_sweep();
+
+    let parser: Parser = new Parser();
+    
+    parser.tokens = tokens;
+    parser.position = 0;
+
+    return parser;
+}
+
+func current_token(parser: Parser): Token {
+    if (parser.position >= parser.tokens.length) {
+        return <Token>list_get_value(parser.tokens, parser.tokens.length - 1);
+    }
+
+    return <Token>list_get_value(parser.tokens, parser.position);
+}
+
+func peek_token(parser: Parser): Token {
+    if (parser.position + 1 >= parser.tokens.length) {
+        return <Token>list_get_value(parser.tokens, parser.tokens.length - 1);
+    }
+
+    return <Token>list_get_value(parser.tokens, parser.position + 1);
+}
+
+func next_token(parser: Parser): Token {
+    let curr: Token = current_token(parser);
+    
+    parser.position = parser.position + 1;
+
+    return curr;
+}
+
+func match_token(parser: Parser, kind: TokenKind): Token {
+    let curr: Token = current_token(parser);
+    if (curr.kind != kind) {
+        // TODO report diagnostic
+        PANIC("Expected token, was not received");
+    }
+
+    parser.position = parser.position + 1;
+    return curr;
+}
+
+func match_token2(parser: Parser, kind1: TokenKind, kind2: TokenKind): Token {
+    let curr: Token = current_token(parser);
+    if (curr.kind != kind1 && curr.kind != kind2) {
+        // TODO report diagnostic
+        PANIC("Expected token, was not received");
+    }
+
+    parser.position = parser.position + 1;
+    return curr;
+}
+
+func parser_is_eof(parser: Parser): bool {
+    return parser.position >= parser.tokens.length;
+}
+
+func unary_operator_precedence(operator: TokenKind): i32 {
+    if (operator == TokenKind.BANG || operator == TokenKind.PLUS || operator == TokenKind.MINUS) {
+        return 6;
+    }
+
+    return 0;
+}
+
+func binary_operator_precedence(operator: TokenKind): i32 {
+    if (operator == TokenKind.STAR || operator == TokenKind.SLASH) {
+        return 5;
+    }
+
+    if (operator == TokenKind.PLUS || operator == TokenKind.MINUS) {
+        return 4;
+    }
+
+    if (operator == TokenKind.EQUALS_EQUALS ||
+        operator == TokenKind.BANG_EQUALS ||
+        operator == TokenKind.LANGLE ||
+        operator == TokenKind.LANGLE_EQUALS ||
+        operator == TokenKind.RANGLE ||
+        operator == TokenKind.RANGLE_EQUALS) {
+        return 3;
+    }
+
+    if (operator == TokenKind.AND_AND) {
+        return 2;
+    }
+
+    if (operator == TokenKind.OR_OR) {
+        return 1;
+    }
+
+    return 0;
+}
+
+func parse_semicolon_block(parser: Parser, expectAtLeastOne: bool): ObjectList {
+    let list: ObjectList = list_init();
+    
+    if (expectAtLeastOne) {
+        let token: Token = match_token(parser, TokenKind.SEMICOLON);
+        list_push(list, token);
+    }
+
+    while (current_token(parser).kind == TokenKind.SEMICOLON && !parser_is_eof(parser)) {
+        list_push(list, next_token(parser));
+    }
+
+    return list;
+}
+
+func parse_type_signature(parser: Parser): TypeSignature {
+    let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+    let dynamic: TypeSignatureDynamic = null;
+
+    if (current_token(parser).kind == TokenKind.LANGLE) {
+        let lAngle: Token = next_token(parser);
+        let generics: ObjectList = list_init();
+
+        while (current_token(parser).kind != TokenKind.RANGLE && !parser_is_eof(parser)) {
+            let typeSignature: TypeSignature = parse_type_signature(parser);
+            let comma: Token = null;
+            if (current_token(parser).kind != TokenKind.RANGLE) {
+                comma = match_token(parser, TokenKind.COMMA);
+            }
+
+            let generic: TypeSignatureDynamicGeneric = new TypeSignatureDynamicGeneric();
+            
+            generic.typeSignature = typeSignature;
+            generic.comma = comma;
+
+            list_push(generics, generic);
+        }
+
+        if (generics.length == 0) {
+            // TODO replace with diagnostic
+            PANIC("Generic count cannot be zero");
+        }
+
+        let rAngle: Token = match_token(parser, TokenKind.RANGLE);
+
+        let dynamic: TypeSignatureDynamic = new TypeSignatureDynamic();
+        dynamic.lAngle = lAngle;
+        dynamic.generics = generics;
+        dynamic.rAngle = rAngle;
+    }
+
+    let typeSignature: TypeSignature = new TypeSignature();
+
+    typeSignature.identifier = identifier;
+    typeSignature.dynamic = dynamic;
+
+    return typeSignature;
+}
+
+func parse_type_clause(parser: Parser): TypeClause {
+    let colon: Token = match_token(parser, TokenKind.COLON);
+    let typeSignature: TypeSignature = parse_type_signature(parser);
+
+    let typeClause: TypeClause = new TypeClause();
+    
+    typeClause.colon = colon;
+    typeClause.typeSignature = typeSignature;
+
+    return typeClause;
+}
+
+func parse_ctor_expression(parser: Parser): CtorExpression {
+    let keyword: Token = match_token(parser, TokenKind.NEW_KEYWORD);
+    let typeSignature: TypeSignature = parse_type_signature(parser);
+
+    let lParen: Token = match_token(parser, TokenKind.LPAREN);
+    let rParen: Token = match_token(parser, TokenKind.RPAREN);
+
+    let ctorExpression: CtorExpression = new CtorExpression();
+    
+    ctorExpression.keyword = keyword;
+    ctorExpression.typeSignature = typeSignature;
+    ctorExpression.lParen = lParen;
+    ctorExpression.rParen = rParen;
+
+    return ctorExpression;
+}
+
+func parse_integer_expression(parser: Parser): LiteralExpression {
+    let value: Token = match_token(parser, TokenKind.INTEGER_LITERAL);
+    
+    let literalExpression: LiteralExpression = new LiteralExpression();
+    
+    literalExpression.value = value;
+
+    return literalExpression;
+}
+
+func parse_char_expression(parser: Parser): LiteralExpression {
+    let value: Token = match_token(parser, TokenKind.CHAR_LITERAL);
+    
+    let literalExpression: LiteralExpression = new LiteralExpression();
+    
+    literalExpression.value = value;
+
+    return literalExpression;
+}
+
+func parse_string_expression(parser: Parser): LiteralExpression {
+    let value: Token = match_token(parser, TokenKind.STRING_LITERAL);
+    
+    let literalExpression: LiteralExpression = new LiteralExpression();
+    
+    literalExpression.value = value;
+
+    return literalExpression;
+}
+
+func parse_boolean_expression(parser: Parser): LiteralExpression {
+    let value: Token = match_token2(parser, TokenKind.FALSE_KEYWORD, TokenKind.TRUE_KEYWORD);
+    
+    let literalExpression: LiteralExpression = new LiteralExpression();
+    
+    literalExpression.value = value;
+
+    return literalExpression;
+}
+
+func parse_identifier_expression(parser: Parser): LiteralExpression {
+    let value: Token = match_token(parser, TokenKind.IDENTIFIER);
+    
+    let literalExpression: LiteralExpression = new LiteralExpression();
+    
+    literalExpression.value = value;
+
+    return literalExpression;
+}
+
+func parse_paren_expression(parser: Parser): ParenExpression {
+    let lParen: Token = match_token(parser, TokenKind.LPAREN);
+    let expression: Object = parse_expression(parser);
+    let rParen: Token = match_token(parser, TokenKind.RPAREN);
+
+    let parenExpression: ParenExpression = new ParenExpression();
+
+    parenExpression.lParen = lParen;
+    parenExpression.expression = expression;
+    parenExpression.rParen = rParen;
+
+    return parenExpression;
+}
+
+func parse_cast_expression(parser: Parser): CastExpression {
+    let lAngle: Token = match_token(parser, TokenKind.LANGLE);
+    let typeSignature: TypeSignature = parse_type_signature(parser);
+    let rAngle: Token = match_token(parser, TokenKind.RANGLE);
+    let expression: Object = parse_expression(parser);
+
+    let castExpression: CastExpression = new CastExpression();
+
+    castExpression.lAngle = lAngle;
+    castExpression.typeSignature = typeSignature;
+    castExpression.rAngle = rAngle;
+    castExpression.expression = expression;
+
+    return castExpression;
+}
+
+func parse_null_expression(parser: Parser): LiteralExpression {
+    let value: Token = match_token(parser, TokenKind.NULL_KEYWORD);
+    
+    let literalExpression: LiteralExpression = new LiteralExpression();
+    
+    literalExpression.value = value;
+
+    return literalExpression;
+}
+
+func parse_base_expression(parser: Parser): Object {
+    let kind: TokenKind = current_token(parser).kind;
+
+    if (kind == TokenKind.INTEGER_LITERAL) {
+        return parse_integer_expression(parser);
+    }
+    if (kind == TokenKind.CHAR_LITERAL) {
+        return parse_char_expression(parser);
+    }
+    if (kind == TokenKind.STRING_LITERAL) {
+        return parse_string_expression(parser);
+    }
+    if (kind == TokenKind.TRUE_KEYWORD || kind == TokenKind.FALSE_KEYWORD) {
+        return parse_boolean_expression(parser);
+    }
+    if (kind == TokenKind.IDENTIFIER) {
+        return parse_identifier_expression(parser);
+    }
+    if (kind == TokenKind.LANGLE) {
+        return parse_cast_expression(parser);
+    }
+    if (kind == TokenKind.LPAREN) {
+        return parse_paren_expression(parser);
+    }
+    if (kind == TokenKind.NULL_KEYWORD) {
+        return parse_null_expression(parser);
+    }
+
+    PANIC("(parser) Unknown expression");
+}
+
+func parse_wrapper_expression(parser: Parser): Object {
+    let left: Object = parse_base_expression(parser);
+
+    while (true) {
+        if (current_token(parser).kind == TokenKind.LPAREN) {
+            let lParen: Token = next_token(parser);
+            let arguments: ObjectList = list_init();
+
+            while (current_token(parser).kind != TokenKind.RPAREN && !parser_is_eof(parser)) {
+                let expression: Object = parse_expression(parser);
+                let comma: Token = null;
+                if (current_token(parser).kind != TokenKind.RPAREN) {
+                    comma = match_token(parser, TokenKind.COMMA);
+                }
+
+                let argument: CallExpressionArgument = new CallExpressionArgument();
+
+                argument.expression = expression;
+                argument.comma = comma;
+
+                list_push(arguments, argument);
+            }
+
+            let rParen: Token = match_token(parser, TokenKind.RPAREN);
+            let callExpression: CallExpression = new CallExpression();
+
+            callExpression.callee = left;
+            callExpression.lParen = lParen;
+            callExpression.arguments = arguments;
+            callExpression.rParen = rParen;
+
+            left = callExpression;
+            continue;
+        } 
+        
+        if (current_token(parser).kind == TokenKind.DOT) {
+            let dot: Token = match_token(parser, TokenKind.DOT);
+            let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+
+            let memberExpression: MemberExpression = new MemberExpression();
+
+            memberExpression.object = left;
+            memberExpression.dot = dot;
+            memberExpression.identifier = identifier;
+
+            left = memberExpression;
+            continue;
+        }
+
+        if (current_token(parser).kind == TokenKind.IS_KEYWORD) {
+            let keyword: Token = next_token(parser);
+            let typeSignature: TypeSignature = parse_type_signature(parser);
+
+            let isExpression: IsExpression = new IsExpression();
+
+            isExpression.left = left;
+            isExpression.keyword = keyword;
+            isExpression.typeSignature = typeSignature;
+
+            left = isExpression;
+            continue;   
+        }
+
+        break;
+    }
+
+    return left;
+}
+
+func parse_binary_expression(parser: Parser, parentPrecedence: i32): Object {
+    let left: Object;
+    let unaryIndex: i32 = unary_operator_precedence(current_token(parser).kind);
+    if (unaryIndex != 0 && unaryIndex >= parentPrecedence) {
+        let operator: Token = next_token(parser);
+        let right: Object = parse_binary_expression(parser, unaryIndex);
+
+        let unaryExpression: UnaryExpression = new UnaryExpression();
+        
+        unaryExpression.operator = operator;
+        unaryExpression.right = right;
+
+        left = unaryExpression;
+    } else {
+        left = parse_wrapper_expression(parser);
+    }
+
+    while (true) {
+        let binaryIndex: i32 = binary_operator_precedence(current_token(parser).kind);
+        if (binaryIndex == 0 || binaryIndex <= parentPrecedence) {
+            break;
+        }
+
+        let operator: Token = next_token(parser);
+        let right: Object = parse_binary_expression(parser, binaryIndex);
+
+        let binaryExpression: BinaryExpression = new BinaryExpression();
+
+        binaryExpression.left = left;
+        binaryExpression.operator = operator;
+        binaryExpression.right = right;
+
+        left = binaryExpression;
+    }
+
+    return left;
+}
+
+func parse_assignment_expression(parser: Parser): Object {
+    let left: Object = parse_binary_expression(parser, 0);
+
+    if (current_token(parser).kind == TokenKind.EQUALS) {
+        let operator: Token = next_token(parser);
+        let right: Object = parse_expression(parser);
+
+        let assignmentExpression: AssignmentExpression = new AssignmentExpression();
+
+        assignmentExpression.left = left;
+        assignmentExpression.operator = operator;
+        assignmentExpression.right = right;
+
+        return assignmentExpression;
+    }
+
+    return left;
+}
+
+func parse_expression(parser: Parser): Object {
+    if (current_token(parser).kind == TokenKind.NEW_KEYWORD) {
+        return parse_ctor_expression(parser);
+    }
+    
+    return parse_assignment_expression(parser);
+}
+
+func parse_block_statement(parser: Parser): BlockStatement {
+    let lBrace: Token = match_token(parser, TokenKind.LBRACE);
+    let statements: ObjectList = list_init();
+
+    while (current_token(parser).kind != TokenKind.RBRACE && !parser_is_eof(parser)) {
+        let statement: Object = parse_statement(parser);
+        list_push(statements, statement);
+    }
+
+    let rBrace: Token = match_token(parser, TokenKind.RBRACE);
+    let semicolons: ObjectList = parse_semicolon_block(parser, false);
+
+    let blockStatement: BlockStatement = new BlockStatement();
+
+    blockStatement.lBrace = lBrace;
+    blockStatement.statements = statements;
+    blockStatement.rBrace = rBrace;
+    blockStatement.semicolons = semicolons;
+
+    return blockStatement;
+}
+
+func parse_variable_statement(parser: Parser): VariableStatement {
+    let keyword: Token = match_token(parser, TokenKind.LET_KEYWORD);
+    let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+    let typeClause: TypeClause = parse_type_clause(parser);
+
+    let equals: Token = null;
+    let initializer: Object = null;
+
+    if (current_token(parser).kind == TokenKind.EQUALS) {
+        equals = next_token(parser);
+        initializer = parse_expression(parser);
+    }
+
+    let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+    let variableStatement: VariableStatement = new VariableStatement();
+    
+    variableStatement.keyword = keyword;
+    variableStatement.identifier = identifier;
+    variableStatement.typeClause = typeClause;
+    variableStatement.equals = equals;
+    variableStatement.initializer = initializer;
+    variableStatement.semicolons = semicolons;
+
+    return variableStatement;
+}
+
+func parse_if_statement(parser: Parser): IfStatement {
+    let keyword: Token = match_token(parser, TokenKind.IF_KEYWORD);
+    let lParen: Token = match_token(parser, TokenKind.LPAREN);
+    let condition: Object = parse_expression(parser);
+    let rParen: Token = match_token(parser, TokenKind.RPAREN);
+    let thenCase: Object = parse_statement(parser);
+
+    let elseCase: ElseCase = null;
+    if (current_token(parser).kind == TokenKind.ELSE_KEYWORD) {
+        let keyword: Token = next_token(parser);
+        let thenCase: Object = parse_statement(parser);
+
+        elseCase = new ElseCase();
+        
+        elseCase.keyword = keyword;
+        elseCase.thenCase = thenCase;
+    }
+
+    let ifStatement: IfStatement = new IfStatement();
+
+    ifStatement.keyword = keyword;
+    ifStatement.lParen = lParen;
+    ifStatement.condition = condition;
+    ifStatement.rParen = rParen;
+    ifStatement.thenCase = thenCase;
+    ifStatement.elseCase = elseCase;
+
+    return ifStatement;
+}
+
+func parse_while_statement(parser: Parser): WhileStatement {
+    let keyword: Token = match_token(parser, TokenKind.WHILE_KEYWORD);
+    let lParen: Token = match_token(parser, TokenKind.LPAREN);
+    let condition: Object = parse_expression(parser);
+    let rParen: Token = match_token(parser, TokenKind.RPAREN);
+    let body: Object = parse_statement(parser);
+
+    let whileStatement: WhileStatement = new WhileStatement();
+
+    whileStatement.keyword = keyword;
+    whileStatement.lParen = lParen;
+    whileStatement.condition = condition;
+    whileStatement.rParen = rParen;
+    whileStatement.body = body;
+
+    return whileStatement;
+}
+
+func parse_return_statement(parser: Parser): ReturnStatement {
+    let keyword: Token = match_token(parser, TokenKind.RETURN_KEYWORD);
+    
+    let value: Object = null;
+    if (current_token(parser).kind != TokenKind.SEMICOLON) {
+        value = parse_expression(parser);
+    }
+
+    let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+    let returnStatement: ReturnStatement = new ReturnStatement();
+    
+    returnStatement.keyword = keyword;
+    returnStatement.value = value;
+    returnStatement.semicolons = semicolons;
+
+    return returnStatement;
+}
+
+func parse_break_statement(parser: Parser): BreakStatement {
+    let keyword: Token = match_token(parser, TokenKind.BREAK_KEYWORD);
+    let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+    let breakStatement: BreakStatement = new BreakStatement();
+    
+    breakStatement.keyword = keyword;
+    breakStatement.semicolons = semicolons;
+
+    return breakStatement;
+}
+
+func parse_continue_statement(parser: Parser): ContinueStatement {
+    let keyword: Token = match_token(parser, TokenKind.CONTINUE_KEYWORD);
+    let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+    let breakStatement: ContinueStatement = new ContinueStatement();
+    
+    breakStatement.keyword = keyword;
+    breakStatement.semicolons = semicolons;
+
+    return breakStatement;
+}
+
+func parse_expression_statement(parser: Parser): ExpressionStatement {
+    let expression: Object = parse_expression(parser);
+    let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+    let expressionStatement: ExpressionStatement = new ExpressionStatement();
+    
+    expressionStatement.expression = expression;
+    expressionStatement.semicolons = semicolons;
+
+    return expressionStatement;
+}
+
+func parse_statement(parser: Parser): Object {
+    let kind: TokenKind = current_token(parser).kind;
+
+    if (kind == TokenKind.LBRACE) {
+        return parse_block_statement(parser);
+    } else if (kind == TokenKind.LET_KEYWORD) {
+        return parse_variable_statement(parser);
+    } else if (kind == TokenKind.IF_KEYWORD) {
+        return parse_if_statement(parser);
+    } else if (kind == TokenKind.WHILE_KEYWORD) {
+        return parse_while_statement(parser);
+    } else if (kind == TokenKind.RETURN_KEYWORD) {
+        return parse_return_statement(parser);
+    } else if (kind == TokenKind.BREAK_KEYWORD) {
+        return parse_break_statement(parser);    
+    } else if (kind == TokenKind.CONTINUE_KEYWORD) {
+        return parse_continue_statement(parser);
+    }
+
+    return parse_expression_statement(parser);
+}
+
+func parse_extern_function_member(parser: Parser): ExternFunctionMember {
+    let extern_: Token = match_token(parser, TokenKind.EXTERN_KEYWORD);
+    let keyword: Token = match_token(parser, TokenKind.FUNCTION_KEYWORD);
+    let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+    let lParen: Token = match_token(parser, TokenKind.LPAREN);
+    
+    let parameters: ObjectList = list_init();
+    while (current_token(parser).kind != TokenKind.RPAREN && !parser_is_eof(parser)) {
+        let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+        let typeClause: TypeClause = parse_type_clause(parser);
+        
+        let comma: Token = null;
+        if (current_token(parser).kind != TokenKind.RPAREN) {
+            comma = match_token(parser, TokenKind.COMMA);
+        }
+
+        let parameter: FunctionMemberParameter = new FunctionMemberParameter();
+
+        parameter.identifier = identifier;
+        parameter.typeClause = typeClause;
+        parameter.comma = comma;
+
+        list_push(parameters, parameter);
+    }
+
+    let rParen: Token = match_token(parser, TokenKind.RPAREN);
+    let returnType: TypeClause = parse_type_clause(parser);
+    let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+    let externFunctionMember: ExternFunctionMember = new ExternFunctionMember();
+    
+    externFunctionMember.extern_ = extern_;
+    externFunctionMember.keyword = keyword;
+    externFunctionMember.identifier = identifier;
+    externFunctionMember.lParen = lParen;
+    externFunctionMember.parameters = parameters;
+    externFunctionMember.rParen = rParen;
+    externFunctionMember.returnType = returnType;
+    externFunctionMember.semicolons = semicolons;
+
+    return externFunctionMember;
+}
+
+func parse_extern_type_member(parser: Parser): ExternTypeMember {
+    let extern_: Token = match_token(parser, TokenKind.EXTERN_KEYWORD);
+    let keyword: Token = match_token(parser, TokenKind.TYPE_KEYWORD);
+    let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+    let lBrace: Token = match_token(parser, TokenKind.LBRACE);
+
+    let items: ObjectList = list_init();
+    while (current_token(parser).kind != TokenKind.RBRACE && !parser_is_eof(parser)) {
+        let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+        let typeClause: TypeClause = parse_type_clause(parser);
+        let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+        let item: TypeMemberItem = new TypeMemberItem();
+
+        item.identifier = identifier;
+        item.typeClause = typeClause;
+        item.semicolons = semicolons;
+
+        list_push(items, item);
+    }
+
+    let rBrace: Token = match_token(parser, TokenKind.RBRACE);
+    let semicolons: ObjectList = parse_semicolon_block(parser, false);
+
+    let externTypeMember: ExternTypeMember = new ExternTypeMember();
+
+    externTypeMember.extern_ = extern_;
+    externTypeMember.keyword = keyword;
+    externTypeMember.identifier = identifier;
+    externTypeMember.lBrace = lBrace;
+    externTypeMember.items = items;
+    externTypeMember.rBrace = rBrace;
+    externTypeMember.semicolons = semicolons;
+    
+    return externTypeMember;
+}
+
+func parse_function_member(parser: Parser): FunctionMember {
+    let keyword: Token = match_token(parser, TokenKind.FUNCTION_KEYWORD);
+    let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+    let lParen: Token = match_token(parser, TokenKind.LPAREN);
+    
+    let parameters: ObjectList = list_init();
+    while (current_token(parser).kind != TokenKind.RPAREN && !parser_is_eof(parser)) {
+        let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+        let typeClause: TypeClause = parse_type_clause(parser);
+        
+        let comma: Token = null;
+        if (current_token(parser).kind != TokenKind.RPAREN) {
+            comma = match_token(parser, TokenKind.COMMA);
+        }
+
+        let parameter: FunctionMemberParameter = new FunctionMemberParameter();
+
+        parameter.identifier = identifier;
+        parameter.typeClause = typeClause;
+        parameter.comma = comma;
+
+        list_push(parameters, parameter);
+    }
+
+    let rParen: Token = match_token(parser, TokenKind.RPAREN);
+    let returnType: TypeClause = parse_type_clause(parser);
+    let body: BlockStatement = parse_block_statement(parser);
+
+    
+    let functionMember: FunctionMember = new FunctionMember();
+    
+    functionMember.keyword = keyword;
+    functionMember.identifier = identifier;
+    functionMember.lParen = lParen;
+    functionMember.parameters = parameters;
+    functionMember.rParen = rParen;
+    functionMember.returnType = returnType;
+    functionMember.body = body;
+
+    return functionMember;
+}
+
+func parse_type_member(parser: Parser): TypeMember {
+    let keyword: Token = match_token(parser, TokenKind.TYPE_KEYWORD);
+    let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+    let lBrace: Token = match_token(parser, TokenKind.LBRACE);
+
+    let items: ObjectList = list_init();
+    while (current_token(parser).kind != TokenKind.RBRACE && !parser_is_eof(parser)) {
+        let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+        let typeClause: TypeClause = parse_type_clause(parser);
+        let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+        let item: TypeMemberItem = new TypeMemberItem();
+
+        item.identifier = identifier;
+        item.typeClause = typeClause;
+        item.semicolons = semicolons;
+
+        list_push(items, item);
+    }
+
+    let rBrace: Token = match_token(parser, TokenKind.RBRACE);
+    let semicolons: ObjectList = parse_semicolon_block(parser, false);
+
+    let typeMember: TypeMember = new TypeMember();
+
+    typeMember.keyword = keyword;
+    typeMember.identifier = identifier;
+    typeMember.lBrace = lBrace;
+    typeMember.items = items;
+    typeMember.rBrace = rBrace;
+    typeMember.semicolons = semicolons;
+    
+    return typeMember;
+}
+
+func parse_enum_member(parser: Parser): EnumMember {
+    let keyword: Token = match_token(parser, TokenKind.ENUM_KEYWORD);
+    let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+    let lBrace: Token = match_token(parser, TokenKind.LBRACE);
+
+    let items: ObjectList = list_init();
+    while (current_token(parser).kind != TokenKind.RBRACE && !parser_is_eof(parser)) {
+        let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+        let comma: Token = null;
+        if (current_token(parser).kind != TokenKind.RBRACE) {
+            comma = match_token(parser, TokenKind.COMMA);
+        }
+
+        let item: EnumMemberItem = new EnumMemberItem();
+
+        item.identifier = identifier;
+        item.comma = comma;
+
+        list_push(items, item);
+    }
+
+    let rBrace: Token = match_token(parser, TokenKind.RBRACE);
+    let semicolons: ObjectList = parse_semicolon_block(parser, false);
+
+    let enumMember: EnumMember = new EnumMember();
+    
+    enumMember.keyword = keyword;
+    enumMember.identifier = identifier;
+    enumMember.lBrace = lBrace;
+    enumMember.items = items;
+    enumMember.rBrace = rBrace;
+    enumMember.semicolons = semicolons;
+
+    return enumMember;
+}
+
+func parse_compilation_unit(parser: Parser): CompilationUnit {
+    let externFunctions: ObjectList = list_init();
+    let externTypes: ObjectList = list_init();
+    let functions: ObjectList = list_init();
+    let types: ObjectList = list_init();
+    let enums: ObjectList = list_init();
+
+    while (current_token(parser).kind != TokenKind.EOF && !parser_is_eof(parser)) {
+        let kind: TokenKind = current_token(parser).kind;
+
+        if (kind == TokenKind.EXTERN_KEYWORD) {
+            if (peek_token(parser).kind == TokenKind.FUNCTION_KEYWORD) {
+                list_push(externFunctions, parse_extern_function_member(parser));
+                continue;
+            }
+            if (peek_token(parser).kind == TokenKind.TYPE_KEYWORD) {
+                list_push(externTypes, parse_extern_type_member(parser));
+                continue;
+            }
+            
+        } 
+        if (kind == TokenKind.FUNCTION_KEYWORD) {
+            list_push(functions, parse_function_member(parser));
+            continue;
+        }
+        if (kind == TokenKind.TYPE_KEYWORD) {
+            list_push(types, parse_type_member(parser));
+            continue;
+        }
+        if (kind == TokenKind.ENUM_KEYWORD) {
+            list_push(enums, parse_enum_member(parser));
+            continue;
+        }
+
+        PANIC("Unexpected token");
+    }
+
+    let eof: Token = match_token(parser, TokenKind.EOF);
+
+    let compilationUnit: CompilationUnit = new CompilationUnit();
+
+    compilationUnit.externTypes = externTypes;
+    compilationUnit.types = types;
+    compilationUnit.externFunctions = externFunctions;
+    compilationUnit.functions = functions;
+    compilationUnit.enums = enums;
+    compilationUnit.eof = eof;
+
+    return compilationUnit;
+}

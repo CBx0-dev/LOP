@@ -1,0 +1,6 @@
+extern func exit(code: i32): void;
+
+func PANIC(message: String): void {
+    string_dump(message);
+    exit(1);
+}

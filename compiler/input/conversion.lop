@@ -1,0 +1,148 @@
+enum ConversionKind {
+    IMPLICIT,
+    EXPLICIT
+}
+
+type ConversionRule {
+    from: DataType;
+    to: DataType;
+    kind: ConversionKind;
+}
+
+func rule_init(from: DataType, to: DataType, kind: ConversionKind): ConversionRule {
+    let rule: ConversionRule = new ConversionRule();
+
+    rule.from = from;
+    rule.to = to;
+    rule.kind = kind;
+
+    return rule;
+}
+
+func conversion_init(
+    i8Type: DataType,
+    i16Type: DataType,
+    i32Type: DataType,
+    i64Type: DataType,
+    u8Type: DataType,
+    u16Type: DataType,
+    u32Type: DataType,
+    u64Type: DataType,
+    boolType: DataType,
+    charType: DataType
+): ObjectList {
+    let rules: ObjectList = list_init();
+
+    list_push(rules, rule_init(i8Type, i16Type, ConversionKind.IMPLICIT));
+    list_push(rules, rule_init(i16Type, i32Type, ConversionKind.IMPLICIT));
+    list_push(rules, rule_init(i32Type, i64Type, ConversionKind.IMPLICIT));
+    
+    list_push(rules, rule_init(i16Type, i8Type, ConversionKind.EXPLICIT));
+    list_push(rules, rule_init(i32Type, i16Type, ConversionKind.EXPLICIT));
+    list_push(rules, rule_init(i64Type, i32Type, ConversionKind.EXPLICIT));
+    
+    list_push(rules, rule_init(u8Type, u16Type, ConversionKind.IMPLICIT));
+    list_push(rules, rule_init(u16Type, u32Type, ConversionKind.IMPLICIT));
+    list_push(rules, rule_init(u32Type, u64Type, ConversionKind.IMPLICIT));
+    
+    list_push(rules, rule_init(u16Type, u8Type, ConversionKind.EXPLICIT));
+    list_push(rules, rule_init(u32Type, u16Type, ConversionKind.EXPLICIT));
+    list_push(rules, rule_init(u64Type, u32Type, ConversionKind.EXPLICIT));
+
+    list_push(rules, rule_init(i64Type, boolType, ConversionKind.EXPLICIT));
+    list_push(rules, rule_init(u64Type, boolType, ConversionKind.EXPLICIT));
+
+    list_push(rules, rule_init(boolType, i8Type, ConversionKind.IMPLICIT));
+    list_push(rules, rule_init(boolType, u8Type, ConversionKind.IMPLICIT));
+    
+    list_push(rules, rule_init(charType, u8Type, ConversionKind.IMPLICIT));
+    list_push(rules, rule_init(charType, i16Type, ConversionKind.IMPLICIT));
+
+    return rules;
+}
+
+func conversion_classify(binder: Binder, from: DataType, to: DataType, explicit: bool): ObjectList {
+    if (type_eq_type(from, to)) {
+        return list_init();
+    }
+
+    // Type <--> Object
+    if (from.definition != null && from.definition is TypeMember && type_eq_type(to, binder.objectType)) {
+        let list: ObjectList = list_init();
+        list_push(list, rule_init(from, to, ConversionKind.IMPLICIT));
+        return list;
+    }
+    if (explicit && type_eq_type(from, binder.objectType) && to.definition != null && to.definition is TypeMember) {
+        let list: ObjectList = list_init();
+        list_push(list, rule_init(from, to, ConversionKind.EXPLICIT));
+        return list;
+    }
+
+    // Enum field <--> i32
+    if (from.definition != null && from.definition is EnumMember && type_eq_type(to, binder.i32Type)) {
+        let list: ObjectList = list_init();
+        list_push(list, rule_init(from, to, ConversionKind.IMPLICIT));
+        return list;
+    }
+    if (explicit && type_eq_type(from, binder.objectType) && to.definition != null && to.definition is TypeMember) {
+        let list: ObjectList = list_init();
+        list_push(list, rule_init(from, to, ConversionKind.EXPLICIT));
+        return list;
+    }
+
+    let frontierTypes: ObjectList = list_init();
+    list_push(frontierTypes, from);
+    let frontierPaths: ObjectList = list_init();
+    list_push(frontierPaths, list_init());
+
+    while (frontierTypes.length > 0) {
+        let nextTypes: ObjectList = list_init();
+        let nextPaths: ObjectList = list_init();
+
+        let i: i32 = 0;
+        while(i < frontierTypes.length) {
+            let currentType: DataType = <DataType>list_get_value(frontierTypes, i);
+            let currentPath: ObjectList = <ObjectList>list_get_value(frontierPaths, i);
+            i = i + 1;
+
+            let iter: ObjectListIterator = list_iterator(binder.conversionRules);
+            while (list_iterator_has_next(iter)) {
+                let rule: ConversionRule = <ConversionRule>list_iterator_next(iter);
+
+                if (!type_eq_type(rule.from, currentType) || !explicit && rule.kind == ConversionKind.EXPLICIT) {
+                    continue;
+                }
+
+                let seen: bool = false;
+                let iter: ObjectListIterator = list_iterator(currentPath);
+                while (list_iterator_has_next(iter)) {
+                    let step: ConversionRule = <ConversionRule>list_iterator_next(iter);
+              
+                    if (type_eq_type(step.from, rule.to)) {
+                        seen = true;
+                        break;
+                    }
+                }
+
+                if (seen) {
+                    continue;
+                }
+
+                let newPath: ObjectList = list_dup(currentPath);
+                list_push(newPath, rule);
+
+                if (type_eq_type(rule.to, to)) {
+                    return newPath;
+                }
+
+                list_push(nextTypes, rule.to);
+                list_push(nextPaths, newPath);
+            }
+        }
+
+        frontierTypes = nextTypes;
+        frontierPaths = nextPaths;
+    }
+
+    return null;
+}

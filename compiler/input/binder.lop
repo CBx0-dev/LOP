@@ -1,0 +1,1630 @@
+type BinderFlags {
+    allowEnumIdentifiers: bool;
+    allowBreakStatement: bool;
+    allowContinueStatement: bool;
+}
+
+type Binder {
+    units: ObjectList;
+    trackedTypes: ObjectList;
+    
+    rootScope: Scope;
+    currentScope: Scope;
+    currentFunction: BoundFunctionMember;
+    conversionRules: ObjectList;
+
+    // Core types
+    voidType: DataType;
+    objectType: DataType;
+    boolType: DataType;
+    charType: DataType;
+    u8Type: DataType;
+    u16Type: DataType;
+    u32Type: DataType;
+    u64Type: DataType;
+    i8Type: DataType;
+    i16Type: DataType;
+    i32Type: DataType;
+    i64Type: DataType;
+
+    unaryOperators: ObjectList;
+    binaryOperators: ObjectList;
+
+    flags: BinderFlags;
+}
+
+type BoundProgram {
+    enums: ObjectList;
+    externTypes: ObjectList;
+    types: ObjectList;
+    externFunctions: ObjectList;
+    functions: ObjectList;
+    trackedTypes: ObjectList;
+}
+
+type BoundEnumMemberItem {
+    name: String;
+}
+
+type BoundEnumMember {
+    name: String;
+    items: ObjectList;
+}
+
+type BoundTypeMemberItem {
+    name: String;
+    dataType: DataType;
+}
+
+type BoundTypeMemberMeta {
+    generateTrace: bool;
+    traceName: String;
+}
+
+type BoundTypeMember {
+    name: String;
+    items: ObjectList;
+    meta: BoundTypeMemberMeta;
+}
+
+type BoundFunctionMember {
+    name: String;
+    requiresGC: bool;
+    parameters: ObjectList;
+    variables: ObjectList;
+    body: Object;
+    returnType: DataType;
+    functionSignature: DataType;
+}
+
+type BoundBlockStatement {
+    statements: ObjectList;
+}
+
+type BoundIfStatement {
+    condition: Object;
+    thenCase: Object;
+    elseCase: Object;
+}
+
+type BoundWhileStatement {
+    condition: Object;
+    body: Object;
+}
+
+type BoundReturnStatement {
+    value: Object;
+}
+
+type BoundBreakStatement {
+}
+
+type BoundContinueStatement {
+}
+
+type BoundExpressionStatement {
+    expression: Object;
+}
+
+type BoundUnkownExpression {
+    returnType: DataType;
+}
+
+type BoundEmptyExpression {
+}
+
+type BoundCastExpression {
+    returnType: DataType;
+    expression: Object;
+    rule: ConversionRule;
+}
+
+type BoundNullExpression {
+    returnType: DataType;
+}
+
+type BoundParenExpression {
+    returnType: DataType;
+    expression: Object;
+}
+
+type BoundAssignmentExpression {
+    returnType: DataType;
+    left: Object;
+    right: Object;
+}
+
+type BoundUnaryExpression {
+    returnType: DataType;
+    operator: BoundUnaryOperator;
+    right: Object;
+}
+
+type BoundBinaryExpression {
+    returnType: DataType;
+    left: Object;
+    operator: BoundBinaryOperator;
+    right: Object;
+}
+
+type BoundUnaryOperator {
+    returnType: DataType;
+    tokenKind: TokenKind;
+    right: DataType;
+}
+
+type BoundBinaryOperator {
+    returnType: DataType;
+    left: DataType;
+    tokenKind: TokenKind;
+    right: DataType;
+}
+
+type BoundCallExpression {
+    returnType: DataType;
+    callee: Object;
+    arguments: ObjectList;
+}
+
+type BoundMemberExpression {
+    returnType: DataType;
+    object: Object;
+    identifier: String;
+}
+
+type BoundIsExpression {
+    returnType: DataType;
+    left: Object;
+    targetType: DataType;
+}
+
+type BoundEnumFieldExpression {
+    returnType: DataType;
+    name: String;
+    item: String;
+}
+
+type BoundCtorExpression {
+    returnType: DataType;
+}
+
+type BoundIntegerExpression {
+    returnType: DataType;
+    value: String;
+}
+
+type BoundCharExpression {
+    returnType: DataType;
+    value: String;
+}
+
+type BoundStringExpression {
+    returnType: DataType;
+    value: String;
+}
+
+type BoundBooleanExpression {
+    returnType: DataType;
+    value: TokenKind;
+}
+
+type BoundVariableExpression {
+    returnType: DataType;
+    variable: Variable;
+}
+
+type BoundFunctionExpression {
+    returnType: DataType;
+    function: BoundFunctionMember;
+}
+
+type BoundEnumExpression {
+    returnType: DataType;
+    enumMember: BoundEnumMember;
+}
+
+enum DataTypeKind {
+    PRIMITIVE,
+    OBJECT,
+    STRUCT
+}
+
+type DataType {
+    kind: DataTypeKind;
+    name: String;
+    generics: ObjectList;
+    cName: String;
+    definition: Object;
+}
+
+enum VariableKind {
+    PARAMETER,
+    LOCAL,
+    GLOBAL
+}
+
+type Variable {
+    kind: VariableKind;
+    name: String;
+    id: i32;
+    dataType: DataType;
+}
+
+func type_init_simple(kind: DataTypeKind, name: String, cName: String): DataType {
+    let dataType: DataType = new DataType();
+
+    dataType.kind = kind;
+    dataType.name = name;
+    dataType.generics = null;
+    dataType.cName = cName;
+    dataType.definition = null;
+
+    return dataType;
+} 
+
+func type_init_complex(kind: DataTypeKind, name: String, cName: String, definition: Object): DataType {
+    let dataType: DataType = new DataType();
+
+    dataType.kind = kind;
+    dataType.name = name;
+    dataType.generics = null;
+    dataType.cName = cName;
+    dataType.definition = definition;
+
+    return dataType;
+}
+
+func type_init_dynamic(kind: DataTypeKind, name: String, cName: String, generics: ObjectList): DataType {
+    let dataType: DataType = new DataType();
+
+    dataType.kind = kind;
+    dataType.name = name;
+    dataType.generics = generics;
+    dataType.cName = cName;
+    dataType.definition = null;
+
+    return dataType;
+}
+
+func type_eq_type(left: DataType, right: DataType): bool {
+    if (!string_equals(left.name, right.name)) {
+        return false;
+    }
+
+    if (left.generics == null && right.generics != null ||
+        left.generics != null && right.generics == null) {
+        return false;
+    }
+
+    if (left.generics == null && right.generics == null) {
+        return true;
+    }
+
+    if (left.generics.length != right.generics.length) {
+        return false;
+    }
+
+    let i: i32 = 0;
+    while (i < left.generics.length) {
+        let leftGeneric: DataType = <DataType>list_get_value(left.generics, i);
+        let rightGeneric: DataType = <DataType>list_get_value(right.generics, i);
+        i = i + 1;
+
+        if (!type_eq_type(leftGeneric, rightGeneric)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+func type_eq_def(left: DataType, name: String, generics: ObjectList): bool {
+    if (!string_equals(left.name, name)) {
+        return false;
+    }
+
+    if (left.generics == null && generics != null ||
+        left.generics != null && generics == null) {
+        return false;
+    }
+
+    if (left.generics == null && generics == null) {
+        return true;
+    }
+
+    if (left.generics.length != generics.length) {
+        return false;
+    }
+
+    let i: i32 = 0;
+    while (i < generics.length) {
+        let leftGeneric: DataType = <DataType>list_get_value(left.generics, i);
+        let generic: DataType = <DataType>list_get_value(generics, i);
+        i = i + 1;
+
+        if (!type_eq_type(leftGeneric, generic)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+func variable_init(function: BoundFunctionMember, kind: VariableKind, name: String, dataType: DataType): Variable {
+    let variable: Variable = new Variable();
+    
+    variable.kind = kind;
+    variable.name = name;
+    variable.id = function.variables.length + 1;
+    variable.dataType = dataType;
+
+    if (dataType.kind == DataTypeKind.OBJECT) {
+        function.requiresGC = true;
+    }
+
+    list_push(function.variables, variable);
+    return variable;
+}
+
+func parameter_init(name: String, dataType: DataType): Variable {
+    let variable: Variable = new Variable();
+    
+    variable.kind = VariableKind.PARAMETER;
+    variable.name = name;
+    variable.id = 0;
+    variable.dataType = dataType;
+}
+
+func unary_operator_init(tokenKind: TokenKind, operandType: DataType, returnType: DataType): BoundUnaryOperator {
+    let operator: BoundUnaryOperator = new BoundUnaryOperator();
+    
+    operator.tokenKind = tokenKind;
+    operator.right = operandType;
+    operator.returnType = returnType;
+
+    return operator;
+}
+
+func binary_operator_init(tokenKind: TokenKind, leftType: DataType, rightType: DataType, returnType: DataType): BoundBinaryOperator {
+    let operator: BoundBinaryOperator = new BoundBinaryOperator();
+    
+    operator.tokenKind = tokenKind;
+    operator.left = leftType;
+    operator.right = rightType;
+    operator.returnType = returnType;
+
+    return operator;
+}
+
+func binder_init(units: ObjectList): Binder {
+    let scope: Scope = scope_init(null);
+
+    let voidType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "void", "void");
+    let objectType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "Object", "Object");
+    let boolType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "bool", "bool");
+    let charType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "char", "uchar");
+
+    let u8Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "u8", "u8");
+    let u16Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "u16", "u16");
+    let u32Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "u32", "u32");
+    let u64Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "u64", "u64");
+    let i8Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "i8", "i8");
+    let i16Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "i16", "i16");
+    let i32Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "i32", "i32");
+    let i64Type: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "i64", "i64");
+
+    scope_declare_type(scope, objectType);
+    scope_declare_type(scope, boolType);
+    scope_declare_type(scope, charType);
+
+    scope_declare_type(scope, u8Type);
+    scope_declare_type(scope, u16Type);
+    scope_declare_type(scope, u32Type);
+    scope_declare_type(scope, u64Type);
+    scope_declare_type(scope, i8Type);
+    scope_declare_type(scope, i16Type);
+    scope_declare_type(scope, i32Type);
+    scope_declare_type(scope, i64Type);
+
+    let conversionRules: ObjectList = conversion_init(
+        i8Type,
+        i16Type,
+        i32Type,
+        i64Type,
+        u8Type,
+        u16Type,
+        u32Type,
+        u64Type,
+        boolType,
+        charType
+    );
+
+    let unaryOperators: ObjectList = list_init();
+    list_push(unaryOperators, unary_operator_init(TokenKind.PLUS, i8Type, i8Type));
+    list_push(unaryOperators, unary_operator_init(TokenKind.PLUS, i16Type, i16Type));
+    list_push(unaryOperators, unary_operator_init(TokenKind.PLUS, i32Type, i32Type));
+    list_push(unaryOperators, unary_operator_init(TokenKind.PLUS, i64Type, i64Type));
+
+    list_push(unaryOperators, unary_operator_init(TokenKind.MINUS, i8Type, i8Type));
+    list_push(unaryOperators, unary_operator_init(TokenKind.MINUS, i16Type, i16Type));
+    list_push(unaryOperators, unary_operator_init(TokenKind.MINUS, i32Type, i32Type));
+    list_push(unaryOperators, unary_operator_init(TokenKind.MINUS, i64Type, i64Type));
+
+    list_push(unaryOperators, unary_operator_init(TokenKind.BANG, boolType, boolType));
+
+    let binaryOperators: ObjectList = list_init();
+    list_push(binaryOperators, binary_operator_init(TokenKind.PLUS, i8Type, i8Type, i8Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.PLUS, i16Type, i16Type, i16Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.PLUS, i32Type, i32Type, i32Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.PLUS, i64Type, i64Type, i64Type));
+
+    list_push(binaryOperators, binary_operator_init(TokenKind.MINUS, i8Type, i8Type, i8Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.MINUS, i16Type, i16Type, i16Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.MINUS, i32Type, i32Type, i32Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.MINUS, i64Type, i64Type, i64Type));
+    
+    list_push(binaryOperators, binary_operator_init(TokenKind.STAR, i8Type, i8Type, i8Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.STAR, i16Type, i16Type, i16Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.STAR, i32Type, i32Type, i32Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.STAR, i64Type, i64Type, i64Type));
+    
+    list_push(binaryOperators, binary_operator_init(TokenKind.SLASH, i8Type, i8Type, i8Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.SLASH, i16Type, i16Type, i16Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.SLASH, i32Type, i32Type, i32Type));
+    list_push(binaryOperators, binary_operator_init(TokenKind.SLASH, i64Type, i64Type, i64Type));
+
+    list_push(binaryOperators, binary_operator_init(TokenKind.EQUALS_EQUALS, boolType, boolType, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.EQUALS_EQUALS, charType, charType, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.EQUALS_EQUALS, objectType, objectType, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.EQUALS_EQUALS, i8Type, i8Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.EQUALS_EQUALS, i16Type, i16Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.EQUALS_EQUALS, i32Type, i32Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.EQUALS_EQUALS, i64Type, i64Type, boolType));
+
+    list_push(binaryOperators, binary_operator_init(TokenKind.BANG_EQUALS, boolType, boolType, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.BANG_EQUALS, charType, charType, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.BANG_EQUALS, objectType, objectType, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.BANG_EQUALS, i8Type, i8Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.BANG_EQUALS, i16Type, i16Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.BANG_EQUALS, i32Type, i32Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.BANG_EQUALS, i64Type, i64Type, boolType));
+    
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE, i8Type, i8Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE, i16Type, i16Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE, i32Type, i32Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE, i64Type, i64Type, boolType));
+
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE_EQUALS, i8Type, i8Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE_EQUALS, i16Type, i16Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE_EQUALS, i32Type, i32Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.LANGLE_EQUALS, i64Type, i64Type, boolType));
+    
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE, i8Type, i8Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE, i16Type, i16Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE, i32Type, i32Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE, i64Type, i64Type, boolType));
+
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE_EQUALS, i8Type, i8Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE_EQUALS, i16Type, i16Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE_EQUALS, i32Type, i32Type, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.RANGLE_EQUALS, i64Type, i64Type, boolType));
+
+    list_push(binaryOperators, binary_operator_init(TokenKind.AND_AND, boolType, boolType, boolType));
+    list_push(binaryOperators, binary_operator_init(TokenKind.OR_OR, boolType, boolType, boolType));
+
+    let flags: BinderFlags = new BinderFlags();
+
+    flags.allowEnumIdentifiers = false;
+    flags.allowBreakStatement = false;
+    flags.allowContinueStatement = false;
+
+    let binder: Binder = new Binder();
+    
+    binder.units = units;
+    binder.trackedTypes = list_init();
+    binder.rootScope = scope;
+    binder.currentScope = scope;
+    binder.currentFunction = null;
+    binder.conversionRules = conversionRules;
+
+    binder.voidType = voidType;
+    binder.objectType = objectType;
+    binder.boolType = boolType;
+    binder.charType = charType;
+    binder.u8Type = u8Type;
+    binder.u16Type = u16Type;
+    binder.u32Type = u32Type;
+    binder.u64Type = u64Type;
+    binder.i8Type = i8Type;
+    binder.i16Type = i16Type;
+    binder.i32Type = i32Type;
+    binder.i64Type = i64Type;
+
+    binder.unaryOperators = unaryOperators;
+    binder.binaryOperators = binaryOperators;
+
+    binder.flags = flags;
+
+    return binder;
+}
+
+func RETURN_TYPE(object: Object): DataType {
+    return (<BoundUnkownExpression>object).returnType;
+}
+
+func SET_RETURN_TYPE(object: Object, dataType: DataType): void {
+    (<BoundUnkownExpression>object).returnType = dataType;
+}
+
+func generate_func_cName(generics: ObjectList): String {
+    let cName: String = "Func";
+    
+    let iter: ObjectListIterator = list_iterator(generics);
+    while (list_iterator_has_next(iter)) {
+        let generic: DataType = <DataType>list_iterator_next(iter);
+        cName = string_concat(cName, "_");
+        cName = string_concat(cName, generic.cName);
+    }
+
+    return cName;
+}
+
+func bind_type_signature_dynamic_func(binder: Binder, dynamic: TypeSignatureDynamic): DataType {
+    if (dynamic.generics.length < 1) {
+        // TODO replace with diagnostics
+        PANIC("Function type signature must have at least one generic type");
+    }
+
+    let generics: ObjectList = list_init();
+    let i: i32 = 0; 
+    while (i < dynamic.generics.length) {
+        let generic: TypeSignatureDynamicGeneric = <TypeSignatureDynamicGeneric>list_get_value(dynamic.generics, i);
+        list_push(generics, bind_type_signature(binder, generic.typeSignature, i == 0));
+    }
+
+    let dataType: DataType = scope_lookup_type(binder.currentScope, "Func", generics);
+    if (dataType == null) {
+        let cName: String = generate_func_cName(generics);
+        dataType = type_init_dynamic(DataTypeKind.PRIMITIVE, "Func", cName, generics);
+
+        list_push(binder.trackedTypes, dataType);
+        scope_declare_type(binder.rootScope, dataType);
+    }
+
+    return dataType;
+}
+
+func bind_type_signature_dynamic_span(binder: Binder, dynamic: TypeSignatureDynamic): DataType {
+    if (dynamic.generics.length != 1) {
+        // TODO replace with diagnostics
+        PANIC("Span type signature must have one generic type");
+    }
+
+    let generic: DataType = bind_type_signature(binder, (<TypeSignatureDynamicGeneric>list_get_value(dynamic.generics, 0)).typeSignature, false);
+    
+    let generics: ObjectList = list_init();
+    list_push(generics, generic);
+
+    let dataType: DataType = scope_lookup_type(binder.currentScope, "Span", generics);
+    if (dataType == null) {
+        let cName: String = string_concat("Span_", generic.cName);
+        dataType = type_init_dynamic(DataTypeKind.OBJECT, "Span", cName, generics);
+        scope_declare_type(binder.rootScope, dataType);
+    }
+
+    return dataType;
+}
+
+func bind_type_signature_dynamic(binder: Binder, signature: TypeSignature, dynamic: TypeSignatureDynamic): DataType {
+    let keyword: String = signature.identifier.value;
+    if (string_equals(keyword, "Func")) {
+        return bind_type_signature_dynamic_func(binder, dynamic);
+    }
+    if (string_equals(keyword, "Span")) {
+        return bind_type_signature_dynamic_span(binder, dynamic);
+    }
+
+    // TODO replace with diagnostics
+    PANIC("Unknown dynamic type signature");
+}
+
+func bind_type_signature(binder: Binder, signature: TypeSignature, allowVoid: bool): DataType {
+    if (signature.dynamic != null) {
+        bind_type_signature_dynamic(binder, signature, signature.dynamic);
+    }
+
+    if (string_equals(signature.identifier.value, "void") && allowVoid) {
+        return binder.voidType;
+    }
+
+    let dataType: DataType = scope_lookup_type(binder.currentScope, signature.identifier.value, null);
+    if (dataType == null) {
+        // TODO replace with diagnostics
+        PANIC("Unkown type");
+    }
+
+    return dataType;
+}
+
+func bind_type_clause(binder: Binder, typeClause: TypeClause, allowVoid: bool): DataType {
+    return bind_type_signature(binder, typeClause.typeSignature, allowVoid);
+}
+
+func bind_ctor_expression(binder: Binder, ctorExpression: CtorExpression): BoundCtorExpression {
+    let dataType: DataType = bind_type_signature(binder, ctorExpression.typeSignature, false);
+    if (dataType.kind != DataTypeKind.OBJECT) {
+        // TODO replace with diagnostics
+        PANIC("Can only use with objects");
+    }
+
+    let node: BoundCtorExpression = new BoundCtorExpression();
+    
+    node.returnType = dataType;
+    
+    return node;
+}
+
+func is_node_assignable(node: Object): bool {
+    if (node is ParenExpression) {
+        let parenExpression: ParenExpression = <ParenExpression>node;
+        return is_node_assignable(parenExpression.expression);
+    }
+
+    return node is BoundVariableExpression ||
+            node is BoundMemberExpression;
+}
+
+func bind_assignment_expression(binder: Binder, assignmentExpression: AssignmentExpression): BoundAssignmentExpression {
+    let left: Object = bind_expression(binder, assignmentExpression.left, null);
+    if (!is_node_assignable(left)) {
+        // TODO replace with diagnostics
+        PANIC("Expression is not assignable");
+    }
+
+    let right: Object = bind_expression(binder, assignmentExpression.right, RETURN_TYPE(left)); 
+    
+    // TODO transform += to = ... + ...
+
+    let node: BoundAssignmentExpression = new BoundAssignmentExpression();
+
+    node.returnType = RETURN_TYPE(right);
+    node.left = left;
+    node.right = right;
+
+    return node;
+}
+
+func lookup_unary_operator(binder: Binder, tokenKind: TokenKind, operandType: DataType): BoundUnaryOperator {
+    let iter: ObjectListIterator = list_iterator(binder.unaryOperators);
+    while (list_iterator_has_next(iter)) {
+        let operator: BoundUnaryOperator = <BoundUnaryOperator>list_iterator_next(iter);
+        if (operator.tokenKind == tokenKind && type_eq_type(operator.right, operandType)) {
+            return operator;
+        }
+    }
+
+    return null;
+}
+
+func bind_unary_expression(binder: Binder, unaryExpression: UnaryExpression): BoundUnaryExpression {
+    let right: Object = bind_expression(binder, unaryExpression.right, null);
+    let operator: BoundUnaryOperator = lookup_unary_operator(binder, unaryExpression.operator.kind, RETURN_TYPE(right));
+
+    if (operator != null) {
+        let node: BoundUnaryExpression = new BoundUnaryExpression();
+
+        node.returnType = operator.returnType;
+        node.operator = operator;
+        node.right = right;
+
+        return node;
+    }
+
+    // Try to find an operator by converting operand
+    let iter: ObjectListIterator = list_iterator(binder.unaryOperators);
+    while (list_iterator_has_next(iter)) {
+        let operator: BoundUnaryOperator = <BoundUnaryOperator>list_iterator_next(iter);
+        let rightConversion: ObjectList = conversion_classify(binder, RETURN_TYPE(right), operator.right, false);
+
+        if (rightConversion != null) {
+            right = bind_conversion(right, rightConversion);
+
+            let node: BoundUnaryExpression = new BoundUnaryExpression();
+            
+            node.returnType = operator.returnType;
+            node.operator = operator;
+            node.right = right;
+            
+            return node;
+        }
+    }
+
+    // TODO replace with diagnostics
+    PANIC("Unary operator is not defined for this type");
+}
+
+func lookup_binary_operator(binder: Binder, tokenKind: TokenKind, leftType: DataType, rightType: DataType): BoundBinaryOperator {
+    let iter: ObjectListIterator = list_iterator(binder.binaryOperators);
+    while (list_iterator_has_next(iter)) {
+        let operator: BoundBinaryOperator = <BoundBinaryOperator>list_iterator_next(iter);
+        if (operator.tokenKind == tokenKind && type_eq_type(operator.left, leftType) && type_eq_type(operator.right, rightType)) {
+            return operator;
+        }
+    }
+
+    return null;
+}
+
+func bind_binary_expression(binder: Binder, binaryExpression: BinaryExpression): BoundBinaryExpression {
+    let left: Object = bind_expression(binder, binaryExpression.left, null);
+    let right: Object = bind_expression(binder, binaryExpression.right, null);
+
+    if (binaryExpression.operator.kind == TokenKind.EQUALS_EQUALS || 
+        binaryExpression.operator.kind == TokenKind.BANG_EQUALS) {
+        if (left is BoundNullExpression && right is BoundNullExpression) {
+            PANIC("Cannot compare null with null");
+        }
+
+        if (left is BoundNullExpression && !(right is BoundNullExpression)) {
+            // TODO Can be replace by setting returnType directly with the of right
+            left = bind_expression(binder, binaryExpression.left, RETURN_TYPE(right));
+        } else if (right is BoundNullExpression && !(left is BoundNullExpression)) {
+            // TODO Can be replace by setting returnType directly with the of left
+            right = bind_expression(binder, binaryExpression.left, RETURN_TYPE(left));
+        }
+    }
+
+    let operator: BoundBinaryOperator = lookup_binary_operator(binder, binaryExpression.operator.kind, RETURN_TYPE(left), RETURN_TYPE(right));
+    if (operator != null) {
+        let node: BoundBinaryExpression = new BoundBinaryExpression();
+        
+        node.returnType = operator.returnType;
+        node.left = left;
+        node.operator = operator;
+        node.right = right;
+
+        return node;
+    }
+
+    // Try to find an operator by converting operands
+    let iter: ObjectListIterator = list_iterator(binder.binaryOperators);
+    while (list_iterator_has_next(iter)) {
+        let operator: BoundBinaryOperator = <BoundBinaryOperator>list_iterator_next(iter);
+        if (operator.tokenKind != binaryExpression.operator.kind) {
+            continue;
+        }
+
+        let leftConversion: ObjectList = conversion_classify(binder, RETURN_TYPE(left), operator.left, false);
+        let rightConversion: ObjectList = conversion_classify(binder, RETURN_TYPE(right), operator.right, false);
+
+        if (leftConversion != null && rightConversion != null) {
+            left = bind_conversion(left, leftConversion);
+            right = bind_conversion(right, leftConversion);
+
+            let node: BoundBinaryExpression = new BoundBinaryExpression();
+        
+            node.returnType = operator.returnType;
+            node.left = left;
+            node.operator = operator;
+            node.right = right;
+
+            return node;
+        }
+    }
+
+    // TODO replace with diagnostics
+    PANIC("Binary operator is not defined for those types");
+}
+
+func bind_call_expression(binder: Binder, callExpression: CallExpression): BoundCallExpression {
+    let callee: Object = bind_expression(binder, callExpression.callee, null);
+    let calleeReturnType: DataType = RETURN_TYPE(callee);
+    if (!string_equals(calleeReturnType.name, "Func")) {
+        // TODO replace with diagnostic
+        PANIC("Expression is not callable");
+    }
+    if (calleeReturnType.generics == null) {
+        // TODO replace with diagnostic
+        PANIC("Function requires generics");
+    }
+
+    if (calleeReturnType.generics.length - 1 != callExpression.arguments.length) {
+        // TODO replace with diagnostic
+        PANIC("Function argument count missmatch");
+    }
+
+    let arguments: ObjectList = list_init();
+    let i: i32 = 0;
+    while (i < callExpression.arguments.length) {
+        let expectedType: DataType = <DataType>list_get_value(calleeReturnType.generics, i + 1);
+        let argument: Object = bind_expression(binder, (<CallExpressionArgument>list_get_value(callExpression.arguments, i)).expression, expectedType);
+        list_push(arguments, argument);
+    }
+
+    let node: BoundCallExpression = new BoundCallExpression();
+
+    node.returnType = <DataType>list_get_value(calleeReturnType.generics, 0);
+    node.arguments = arguments;
+    node.callee = callee;
+
+    return node;
+}
+
+func bind_member_expression(binder: Binder, memberExpression: MemberExpression): Object {
+    let oldEnumIdentifier: bool = binder.flags.allowEnumIdentifiers;
+    binder.flags.allowEnumIdentifiers = true;
+    let object: Object = bind_expression(binder, memberExpression.object, null);
+    binder.flags.allowEnumIdentifiers = oldEnumIdentifier;
+
+    let objectReturnType: DataType = RETURN_TYPE(object);
+    if (objectReturnType.definition == null) {
+        // TODO replace with diagnostic
+        PANIC("Cannot access this expression");
+    }
+
+    let identifier: String = memberExpression.identifier.value;
+
+    if (objectReturnType.definition is BoundTypeMember) {
+        let definition: BoundTypeMember = <BoundTypeMember>objectReturnType.definition;
+        let iter: ObjectListIterator = list_iterator(definition.items);
+        while (list_iterator_has_next(iter)) {
+            let item: BoundTypeMemberItem = <BoundTypeMemberItem>list_iterator_next(iter);
+            if (string_equals(item.name, identifier)) {
+                let node: BoundMemberExpression = new BoundMemberExpression();
+
+                node.returnType = item.dataType;
+                node.object = object;
+                node.identifier = identifier;
+            }
+        }
+
+        // TODO replace with diagnostic
+        PANIC("Item not found in Type");
+    }
+    if (objectReturnType.definition is BoundEnumMember) {
+        let definition: BoundEnumMember = <BoundEnumMember>objectReturnType.definition;
+        let iter: ObjectListIterator = list_iterator(definition.items);
+        while (list_iterator_has_next(iter)) {
+            let item: BoundEnumMemberItem = <BoundEnumMemberItem>list_iterator_next(iter);
+            if (string_equals(item.name, identifier)) {
+                let node: BoundEnumFieldExpression = new BoundEnumFieldExpression();
+
+                node.returnType = objectReturnType;
+                node.name = objectReturnType.name;
+                node.item = item.name;
+                
+                return node;
+            }
+        }
+
+        // TODO replace with diagnostic
+        PANIC("Item not found in Enum");
+    }
+
+    
+    // TODO replace with diagnostic
+    PANIC("Cannot access this expression");
+}
+
+func bind_is_expression(binder: Binder, isExpression: IsExpression): BoundIsExpression {
+    let left: Object = bind_expression(binder, isExpression.left, null);
+    if (RETURN_TYPE(left).kind != DataTypeKind.OBJECT) {
+        // TODO replace with diagnostic
+        PANIC("Cannot use 'is' with non-object type");
+    }
+
+    let targetType: DataType = bind_type_signature(binder, isExpression.typeSignature, false);
+    if (targetType.kind != DataTypeKind.OBJECT) {
+        PANIC("Target type in 'is' must be an object type");
+    }
+
+    let node: BoundIsExpression = new BoundIsExpression();
+    
+    node.returnType = binder.boolType;
+    node.left = left;
+    node.targetType = targetType;
+
+    return node;
+}
+
+func bind_literal_expression(binder: Binder, literalExpression: LiteralExpression): Object {
+    if (literalExpression.value.kind == TokenKind.INTEGER_LITERAL) {
+        let node: BoundIntegerExpression = new BoundIntegerExpression();
+
+        node.returnType = binder.i32Type;
+        node.value = literalExpression.value.value;
+    
+        return node;
+    }
+
+    if (literalExpression.value.kind == TokenKind.CHAR_LITERAL) {
+        let node: BoundCharExpression = new BoundCharExpression();
+
+        node.returnType = binder.charType;
+        node.value = literalExpression.value.value;
+
+        return node;
+    }
+
+    if (literalExpression.value.kind == TokenKind.STRING_LITERAL) {
+        let stringType: DataType = scope_lookup_type(binder.currentScope, "String", null);
+        if (stringType == null) {
+            PANIC("Cannot find string type");
+        }
+
+        let node: BoundStringExpression = new BoundStringExpression();
+
+        node.returnType = stringType;
+        node.value = literalExpression.value.value;
+
+        return node;
+    }
+
+    if (literalExpression.value.kind == TokenKind.TRUE_KEYWORD || literalExpression.value.kind == TokenKind.FALSE_KEYWORD) {
+        let node: BoundBooleanExpression = new BoundBooleanExpression();
+
+        node.returnType = binder.boolType;
+        node.value = literalExpression.value.kind;
+
+        return node;
+    }
+
+    if (literalExpression.value.kind == TokenKind.IDENTIFIER) {
+        return bind_identifier_expression(binder, literalExpression);
+    }
+
+    if (literalExpression.value.kind == TokenKind.NULL_KEYWORD) {
+        let node: BoundNullExpression = new BoundNullExpression();
+
+        node.returnType = binder.objectType;
+
+        return node;
+    }
+
+    PANIC("Unknown literal expression type");
+}
+
+func bind_identifier_expression(binder: Binder, literalExpression: LiteralExpression): Object {
+    {
+        let variable: Variable = scope_lookup_variable(binder.currentScope, literalExpression.value.value);
+        if (variable != null) {
+            let node: BoundVariableExpression = new BoundVariableExpression();
+
+            node.returnType = variable.dataType;
+            node.variable = variable;
+
+            return node;
+        }
+    }
+
+    {
+        let function: BoundFunctionMember = scope_lookup_function(binder.currentScope, literalExpression.value.value);
+        if (function != null) {
+            let node: BoundFunctionExpression = new BoundFunctionExpression();
+
+            node.returnType = function.functionSignature;
+            node.function = function;
+
+            return node;
+        }
+    }
+
+    if (binder.flags.allowEnumIdentifiers) {
+        let dataType: DataType = scope_lookup_type(binder.currentScope, literalExpression.value.value, null);
+        if (dataType != null && dataType.definition != null && dataType.definition is BoundEnumMember) {
+            let node: BoundEnumExpression = new BoundEnumExpression();
+
+            node.returnType = dataType;
+            node.enumMember = <BoundEnumMember>dataType.definition;
+
+            return node;
+        }
+    }
+
+    // TODO replace with diagnostics
+    PANIC("Symbol not found");
+}
+
+func bind_paren_expression(binder: Binder, parenExpression: ParenExpression): BoundParenExpression {
+    let expression: Object = bind_expression(binder, parenExpression.expression, null);
+
+    let node: BoundParenExpression = new BoundParenExpression();
+
+    node.expression = expression;
+    node.returnType = RETURN_TYPE(expression);
+
+    return node;
+}
+
+func bind_cast_expression(binder: Binder, castExpression: CastExpression): Object {
+    let targetType: DataType = bind_type_signature(binder, castExpression.typeSignature, false);
+    let expression: Object = bind_expression(binder, castExpression.expression, null);
+
+    let conversions: ObjectList = conversion_classify(binder, RETURN_TYPE(expression), targetType, true);
+    if (conversions == null) {
+        // TODO replace with diagnostic
+        PANIC("Expression is not castable");
+    }
+
+    return bind_conversion(expression, conversions);
+}
+
+func bind_conversion(boundExpression: Object, conversions: ObjectList): Object {
+    let innerExpression: Object = boundExpression;
+    let iter: ObjectListIterator = list_iterator(conversions);
+    while (list_iterator_has_next(iter)) {
+        let conversion: ConversionRule = <ConversionRule>list_iterator_next(iter);
+
+        let node: BoundCastExpression = new BoundCastExpression();
+
+        node.returnType = conversion.to;
+        node.expression = innerExpression;
+        node.rule = conversion;
+
+        innerExpression = node;
+    }
+
+    let node: BoundParenExpression = new BoundParenExpression();
+
+    node.expression = innerExpression;
+    node.returnType = RETURN_TYPE(innerExpression);
+
+    return node;
+}
+
+func bind_expression_internal(binder: Binder, expression: Object): Object {
+    if (expression is CtorExpression) {
+        return bind_ctor_expression(binder, <CtorExpression>expression);
+    }
+    if (expression is AssignmentExpression) {
+        return bind_assignment_expression(binder, <AssignmentExpression>expression);
+    }
+    if (expression is UnaryExpression) {
+        return bind_unary_expression(binder, <UnaryExpression>expression);
+    }
+    if (expression is BinaryExpression) {
+        return bind_binary_expression(binder, <BinaryExpression>expression);
+    }
+    if (expression is CallExpression) {
+        return bind_call_expression(binder, <CallExpression>expression);
+    }
+    if (expression is MemberExpression) {
+        return bind_member_expression(binder, <MemberExpression>expression);
+    }
+    if (expression is IsExpression) {
+        return bind_is_expression(binder, <IsExpression>expression);
+    }
+    if (expression is LiteralExpression) {
+        return bind_literal_expression(binder, <LiteralExpression>expression);
+    }
+    if (expression is ParenExpression) {
+        return bind_paren_expression(binder, <ParenExpression>expression);
+    }
+    if (expression is CastExpression) {
+        return bind_cast_expression(binder, <CastExpression>expression);
+    }
+
+    PANIC("(binder) Unknown expression");
+}
+
+func bind_expression(binder: Binder, expression: Object, expectedType: DataType): Object {
+    let boundExpression: Object = bind_expression_internal(binder, expression);
+
+    if (boundExpression is BoundNullExpression) {
+        if (expectedType == null) {
+            return boundExpression;
+        }
+
+        if (expectedType.kind != DataTypeKind.OBJECT) {
+            PANIC("(binder) Cannot assign null to unexpected expression");
+        }
+
+        SET_RETURN_TYPE(boundExpression, expectedType);
+    }
+
+    if (expectedType != null && !type_eq_type(RETURN_TYPE(boundExpression), expectedType)) {
+        let conversions: ObjectList = conversion_classify(binder, RETURN_TYPE(boundExpression), expectedType, false);
+        if (conversions == null || conversions.length == 0) {
+            PANIC("Not compatible expression");
+        }
+
+        return bind_conversion(boundExpression, conversions);
+    }
+
+    return boundExpression;
+}
+
+func bind_block_statement(binder: Binder, blockStatement: BlockStatement): BoundBlockStatement {
+    scope_push_scope(binder);
+    let statements: ObjectList = list_init();
+
+    let iter: ObjectListIterator = list_iterator(blockStatement.statements);
+    while (list_iterator_has_next(iter)) {
+        let statement: Object = list_iterator_next(iter);
+        list_push(statements, bind_statement(binder, statement));
+    }
+
+    scope_pop_scope(binder);
+
+    let node: BoundBlockStatement = new BoundBlockStatement();
+    
+    node.statements = statements;
+    
+    return node;
+}
+
+func bind_variable_statement(binder: Binder, variableStatement: VariableStatement): Object {
+    if (binder.currentFunction == null) {
+        PANIC("Missing current function context");
+    }
+
+    let dataType: DataType = bind_type_clause(binder, variableStatement.typeClause, false);
+
+    let variable: Variable = variable_init(binder.currentFunction, VariableKind.LOCAL, variableStatement.identifier.value, dataType);
+    scope_declare_variable(binder.currentScope, variable);
+
+    let initializer: Object = null;
+    
+    if (variableStatement.initializer != null) {
+        let right: Object = bind_expression(binder, variableStatement.initializer, dataType);
+
+        let variableExpression: BoundVariableExpression = new BoundVariableExpression();
+        variableExpression.returnType = dataType;
+        variableExpression.variable = variable;
+
+        let assignmentExpression: BoundAssignmentExpression = new BoundAssignmentExpression();
+        
+        assignmentExpression.returnType = dataType;
+        assignmentExpression.left = variableExpression;
+        assignmentExpression.right = right;
+
+        initializer = assignmentExpression;
+    } else {
+        initializer = new BoundEmptyExpression();
+    }
+
+    let node: BoundExpressionStatement = new BoundExpressionStatement();
+
+    node.expression = initializer;
+
+    return node;
+}
+
+func bind_if_statement(binder: Binder, ifStatement: IfStatement): BoundIfStatement {
+    let condition: Object = bind_expression(binder, ifStatement.condition, binder.boolType);
+    let thenCase: Object = bind_statement(binder, ifStatement.thenCase);
+
+    let elseCase: Object = null;
+    if (ifStatement.elseCase != null) {
+        elseCase = bind_statement(binder, ifStatement.elseCase.thenCase);
+    }
+
+    let node: BoundIfStatement = new BoundIfStatement();
+    
+    node.condition = condition;
+    node.thenCase = thenCase;
+    node.elseCase = elseCase;
+
+    return node;
+}
+
+func bind_while_statement(binder: Binder, whileStatement: WhileStatement): BoundWhileStatement {
+    let condition: Object = bind_expression(binder, whileStatement.condition, binder.boolType);
+
+    let oldBreakStatement: bool = binder.flags.allowBreakStatement;
+    let oldContinueStatement: bool = binder.flags.allowContinueStatement;
+    binder.flags.allowBreakStatement = true;
+    binder.flags.allowContinueStatement = true;
+    let body: Object = bind_statement(binder, whileStatement.body);
+    binder.flags.allowBreakStatement = oldBreakStatement;
+    binder.flags.allowContinueStatement = oldContinueStatement;
+    
+    let node: BoundWhileStatement = new BoundWhileStatement();
+    
+    node.condition = condition;
+    node.body = body;
+
+    return node;
+}
+
+func bind_return_statement(binder: Binder, returnStatement: ReturnStatement): BoundReturnStatement {
+    if (binder.currentFunction == null) {
+        PANIC("Missing current function context");
+    }
+
+    if (type_eq_type(binder.currentFunction.returnType, binder.voidType) && returnStatement.value != null) {
+        // TODO replace with diagnostics
+        PANIC("Cannot return value from void function");
+    }
+
+    if (!type_eq_type(binder.currentFunction.returnType, binder.voidType) && returnStatement.value == null) {
+        // TODO replace with diagnostics
+        PANIC("Must return value from non-void function");
+    }
+
+    let value: Object = null;
+    if (returnStatement.value != null) {
+        value = bind_expression(binder, returnStatement.value, binder.currentFunction.returnType);
+    }
+
+    let node: BoundReturnStatement = new BoundReturnStatement();
+
+    node.value = value;
+
+    return node;
+}
+
+func bind_break_statement(binder: Binder, breakStatement: BreakStatement): BoundBreakStatement {
+    if (!binder.flags.allowBreakStatement) {
+        // TODO replace with diagnostics
+        PANIC("Break statements are not allowed here");
+    }
+
+    return new BoundBreakStatement();
+}
+
+func bind_continue_statement(binder: Binder, continueStatement: ContinueStatement): BoundContinueStatement {
+    if (!binder.flags.allowContinueStatement) {
+        // TODO replace with diagnostics
+        PANIC("Continue statements are not allowed here");
+    }
+
+    return new BoundContinueStatement();
+}
+
+func bind_expression_statement(binder: Binder, expressionStatement: ExpressionStatement): BoundExpressionStatement {
+    let expression: Object = bind_expression(binder, expressionStatement.expression, null);
+
+    let node: BoundExpressionStatement = new BoundExpressionStatement();
+    
+    node.expression = expression;
+
+    return node;
+}
+
+func bind_statement(binder: Binder, statement: Object): Object {
+    if (statement is BlockStatement) {
+        return bind_block_statement(binder, <BlockStatement>statement);
+    }
+    if (statement is VariableStatement) {
+        return bind_variable_statement(binder, <VariableStatement>statement);
+    }
+    if (statement is IfStatement) {
+        return bind_if_statement(binder, <IfStatement>statement);
+    }
+    if (statement is WhileStatement) {
+        return bind_while_statement(binder, <WhileStatement>statement);
+    }
+    if (statement is ReturnStatement) {
+        return bind_return_statement(binder, <ReturnStatement>statement);
+    }
+    if (statement is BreakStatement) {
+        return bind_break_statement(binder, <BreakStatement>statement);
+    }
+    if (statement is ContinueStatement) {
+        return bind_continue_statement(binder, <ContinueStatement>statement);
+    }
+    if (statement is ExpressionStatement) {
+        return bind_expression_statement(binder, <ExpressionStatement>statement);
+    }
+
+    PANIC("Unknown statement");
+}
+
+func bind_enum_member(binder: Binder, enumMember: EnumMember): BoundEnumMember {
+    let items: ObjectList = list_init();
+
+    let iter: ObjectListIterator = list_iterator(enumMember.items);
+    while (list_iterator_has_next(iter)) {
+        // TODO detect duplicating names in items
+        let item: EnumMemberItem = <EnumMemberItem>list_iterator_next(iter);
+
+        let node: BoundEnumMemberItem = new BoundEnumMemberItem();
+        
+        node.name = item.identifier.value;
+
+        list_push(items, node);
+    }
+
+    let node: BoundEnumMember = new BoundEnumMember();
+
+    node.name = enumMember.identifier.value;
+    node.items = items;
+
+    let dataType: DataType = type_init_complex(DataTypeKind.PRIMITIVE, node.name, node.name, node);
+    scope_declare_type(binder.currentScope, dataType);
+
+    return node;
+}
+
+func bind_extern_type_member(binder: Binder, externTypeMember: ExternTypeMember): BoundTypeMember {
+    let items: ObjectList = list_init();
+
+    let iter: ObjectListIterator = list_iterator(externTypeMember.items);
+    while (list_iterator_has_next(iter)) {
+        let item: TypeMemberItem = <TypeMemberItem>list_iterator_next(iter);
+        // TODO detect duplicating names in items
+        let dataType: DataType = bind_type_clause(binder, item.typeClause, false);
+
+        let node: BoundTypeMemberItem = new BoundTypeMemberItem();
+
+        node.name = item.identifier.value;
+        node.dataType = dataType;
+
+        list_push(items, node);
+    }
+
+    let meta: BoundTypeMemberMeta = new BoundTypeMemberMeta();
+    
+    meta.generateTrace = false;
+    meta.traceName = "ShouldNotAppear";
+
+    let node: BoundTypeMember = new BoundTypeMember();
+
+    node.name = externTypeMember.identifier.value;
+    node.items = items;
+    node.meta = meta;
+
+    let dataType: DataType = type_init_complex(DataTypeKind.OBJECT, node.name, node.name, node);
+    scope_declare_type(binder.currentScope, dataType);
+
+    return node;
+}
+
+func bind_type_member_signature(binder: Binder, typeMember: TypeMember): void {
+    let meta: BoundTypeMemberMeta = new BoundTypeMemberMeta();
+
+    meta.generateTrace = false;
+    meta.traceName = "object_empty_trace";
+    
+    let node: BoundTypeMember = new BoundTypeMember();
+
+    node.name = typeMember.identifier.value;
+    node.items = list_init();
+    node.meta = meta;
+
+    let dataType: DataType = type_init_complex(DataTypeKind.OBJECT, node.name, node.name, node);
+    scope_declare_type(binder.currentScope, dataType);
+}
+
+func bind_type_member(binder: Binder, typeMember: TypeMember): BoundTypeMember {
+    let dataType: DataType = scope_lookup_type(binder.currentScope, typeMember.identifier.value, null);
+
+    if (dataType.definition == null || !(dataType.definition is BoundTypeMember)) {
+        PANIC("Cannot find Type");
+    }
+
+    let definition: BoundTypeMember = <BoundTypeMember>dataType.definition;
+    let iter: ObjectListIterator = list_iterator(typeMember.items);
+    while (list_iterator_has_next(iter)) {
+        let item: TypeMemberItem = <TypeMemberItem>list_iterator_next(iter);
+        let dataType: DataType = bind_type_clause(binder, item.typeClause, false);
+
+        if (dataType.kind == DataTypeKind.OBJECT) {
+            definition.meta.generateTrace = true;
+            definition.meta.traceName = string_concat(typeMember.identifier.value, "_trace");
+        }
+
+        let node: BoundTypeMemberItem = new BoundTypeMemberItem();
+        
+        node.name = item.identifier.value;
+        node.dataType = dataType;
+    
+        list_push(definition.items, node);
+    }
+
+    return definition;
+}
+
+func bind_extern_function_member(binder: Binder, externFunctionMember: ExternFunctionMember): BoundFunctionMember {
+    let generics: ObjectList = list_init();
+    let returnType: DataType = bind_type_clause(binder, externFunctionMember.returnType, true);
+    list_push(generics, returnType);
+    scope_push_scope(binder);
+
+    let requiresGC: bool = false;
+    let parameters: ObjectList = list_init();
+
+    // TODO check for name duplicates
+    let iter: ObjectListIterator = list_iterator(externFunctionMember.parameters);
+    while (list_iterator_has_next(iter)) {
+        let parameter: FunctionMemberParameter = <FunctionMemberParameter>list_iterator_next(iter);
+        let dataType: DataType = bind_type_clause(binder, parameter.typeClause, false);
+        let variable: Variable = parameter_init(parameter.identifier.value, dataType);
+
+        if (variable.dataType.kind == DataTypeKind.OBJECT) {
+            requiresGC = true;
+        }
+
+        list_push(parameters, variable);
+        list_push(generics, dataType);
+        scope_declare_variable(binder.currentScope, variable);
+    }
+
+    let cName: String = generate_func_cName(generics);
+    let functionSignature: DataType = type_init_dynamic(DataTypeKind.PRIMITIVE, "Func", cName, generics);
+
+    let node: BoundFunctionMember = new BoundFunctionMember();
+
+    node.name = externFunctionMember.identifier.value;
+    node.returnType = returnType;
+    node.requiresGC = requiresGC;
+    node.parameters = parameters;
+    node.variables = list_init();
+    node.body = null;
+    node.functionSignature = functionSignature;
+
+    scope_declare_function(binder.rootScope, node);
+    return node;
+}
+
+func bind_function_member_signature(binder: Binder, functionMember: FunctionMember): void {
+    let generics: ObjectList = list_init();
+    let returnType: DataType = bind_type_clause(binder, functionMember.returnType, true);
+    list_push(generics, returnType);
+
+    let requiresGC: bool = false;
+    let parameters: ObjectList = list_init();
+
+    // TODO check for name duplicates
+    let iter: ObjectListIterator = list_iterator(functionMember.parameters);
+    while (list_iterator_has_next(iter)) {
+        let parameter: FunctionMemberParameter = <FunctionMemberParameter>list_iterator_next(iter);
+        let dataType: DataType = bind_type_clause(binder, parameter.typeClause, false);
+        let variable: Variable = parameter_init(parameter.identifier.value, dataType);
+
+        if (variable.dataType.kind == DataTypeKind.OBJECT) {
+            requiresGC = true;
+        }
+
+        list_push(parameters, variable);
+        list_push(generics, dataType);
+    }
+
+    let cName: String = generate_func_cName(generics);
+    let functionSignature: DataType = type_init_dynamic(DataTypeKind.PRIMITIVE, "Func", cName, generics);
+
+    let node: BoundFunctionMember = new BoundFunctionMember();
+
+    node.name = functionMember.identifier.value;
+    node.returnType = returnType;
+    node.requiresGC = requiresGC;
+    node.parameters = parameters;
+    node.variables = list_init();
+    node.body = null;
+    node.functionSignature = functionSignature;
+
+    scope_declare_function(binder.rootScope, node);
+}
+
+func bind_function_member(binder: Binder, functionMember: FunctionMember): BoundFunctionMember {
+    let function: BoundFunctionMember = scope_lookup_function(binder.currentScope, functionMember.identifier.value);
+    if (function == null) {
+        PANIC("Cannot find function");
+    }
+
+    scope_push_scope(binder);
+    binder.currentFunction = function;
+
+    let iter: ObjectListIterator = list_iterator(function.parameters);
+    while (list_iterator_has_next(iter)) {
+        let parameter: Variable = <Variable>list_iterator_next(iter);
+        scope_declare_variable(binder.currentScope, parameter);
+    }
+
+    function.body = bind_block_statement(binder, functionMember.body);
+    scope_pop_scope(binder);
+
+    return function;
+}
+
+func binder_bind(binder: Binder): BoundProgram {
+    let enums: ObjectList = list_init();
+    let externTypes: ObjectList = list_init();
+    let types: ObjectList = list_init();
+    let externFunctions: ObjectList = list_init();
+    let functions: ObjectList = list_init();
+    
+    {    
+        // Bind enums
+        let iter: ObjectListIterator = list_iterator(binder.units);
+        while (list_iterator_has_next(iter)) {
+            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
+            let iter: ObjectListIterator = list_iterator(unit.enums);
+            while(list_iterator_has_next(iter)) {
+                let enumMember: EnumMember = <EnumMember>list_iterator_next(iter);
+                list_push(enums, bind_enum_member(binder, enumMember));
+            }
+        }
+    }
+
+    {
+        // TODO split in signatue and body checking like in normal types
+        // Bind extern types
+        let iter: ObjectListIterator = list_iterator(binder.units);
+        while (list_iterator_has_next(iter)) {
+            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
+            let iter: ObjectListIterator = list_iterator(unit.externTypes);
+            while(list_iterator_has_next(iter)) {
+                let externType: ExternTypeMember = <ExternTypeMember>list_iterator_next(iter);
+                list_push(externTypes, bind_extern_type_member(binder, externType));
+            }
+        }
+    }
+
+    {
+        // Bind type signatures
+        let iter: ObjectListIterator = list_iterator(binder.units);
+        while (list_iterator_has_next(iter)) {
+            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
+            let iter: ObjectListIterator = list_iterator(unit.types);
+            while(list_iterator_has_next(iter)) {
+                let typeMember: TypeMember = <TypeMember>list_iterator_next(iter);
+                bind_type_member_signature(binder, typeMember);
+            }
+        }
+    }
+
+    {
+        // Bind types
+        let iter: ObjectListIterator = list_iterator(binder.units);
+        while (list_iterator_has_next(iter)) {
+            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
+            let iter: ObjectListIterator = list_iterator(unit.types);
+            while(list_iterator_has_next(iter)) {
+                let typeMember: TypeMember = <TypeMember>list_iterator_next(iter);
+                list_push(types, bind_type_member(binder, typeMember));
+            }
+        }
+    }
+
+    {
+        // Bind extern functions
+        let iter: ObjectListIterator = list_iterator(binder.units);
+        while (list_iterator_has_next(iter)) {
+            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
+            let iter: ObjectListIterator = list_iterator(unit.externFunctions);
+            while(list_iterator_has_next(iter)) {
+                let externFunction: ExternFunctionMember = <ExternFunctionMember>list_iterator_next(iter);
+                list_push(externFunctions, bind_extern_function_member(binder, externFunction));
+            }
+        }
+    }
+
+    {
+        // Bind function signatures
+        let iter: ObjectListIterator = list_iterator(binder.units);
+        while (list_iterator_has_next(iter)) {
+            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
+            let iter: ObjectListIterator = list_iterator(unit.functions);
+            while(list_iterator_has_next(iter)) {
+                let function: FunctionMember = <FunctionMember>list_iterator_next(iter);
+                bind_function_member_signature(binder, function);
+            }
+        }
+    }
+
+    {
+        // Bind functions
+        let iter: ObjectListIterator = list_iterator(binder.units);
+        while (list_iterator_has_next(iter)) {
+            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
+            let iter: ObjectListIterator = list_iterator(unit.functions);
+            while(list_iterator_has_next(iter)) {
+                let function: FunctionMember = <FunctionMember>list_iterator_next(iter);
+                list_push(functions, bind_function_member(binder, function));
+            }
+        }
+    }
+
+    let node: BoundProgram = new BoundProgram();
+
+    node.enums = enums;
+    node.externTypes = externTypes;
+    node.types = types;
+    node.externFunctions = externFunctions;
+    node.functions = functions;
+    node.trackedTypes = binder.trackedTypes;
+
+    return node;
+}

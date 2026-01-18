@@ -1,0 +1,94 @@
+type Scope {
+    parent: Scope;
+    dataTypes: ObjectList;
+    variables: ObjectList;
+    functions: ObjectList;
+}
+
+func scope_init(parent: Scope): Scope {
+    let scope: Scope = new Scope();
+
+    scope.parent = parent;
+    scope.dataTypes = list_init();
+    scope.variables = list_init();
+    scope.functions = list_init();
+
+    return scope;
+}
+
+func scope_push_scope(binder: Binder): void {
+    binder.currentScope = scope_init(binder.currentScope);
+}
+
+func scope_pop_scope(binder: Binder): void {
+    binder.currentScope = binder.currentScope.parent;
+}
+
+func scope_declare_type(scope: Scope, dataType: DataType): void {
+    // TODO check for a symbol with already the name
+    list_push(scope.dataTypes, scope);
+}
+
+func scope_lookup_type(scope: Scope, name: String, generics: ObjectList): DataType {
+    let i: i32 = 0;
+    while (i < scope.dataTypes.length) {
+        let dataType: DataType = <DataType>list_get_value(scope.dataTypes, i);
+        i = i + 1;
+
+        if (type_eq_def(dataType, name, generics)) {
+            return dataType;
+        }
+    }
+
+    if (scope.parent != null) {
+        return scope_lookup_type(scope.parent, name, generics);
+    }
+
+    return null;
+}
+
+func scope_declare_variable(scope: Scope, variable: Variable): void {
+    // TODO check for a symbol with already the name in the same scope
+    list_push(scope.variables, variable);
+}
+
+func scope_lookup_variable(scope: Scope, name: String): Variable {
+    let i: i32 = 0;
+    while (i < scope.variables.length) {
+        let variable: Variable = <Variable>list_get_value(scope.variables, i);
+        i = i + 1;
+
+        if (string_equals(variable.name, name)) {
+            return variable;
+        }
+    }
+
+    if (scope.parent != null) {
+        return scope_lookup_variable(scope.parent, name);
+    }
+
+    return null;
+}
+
+func scope_declare_function(scope: Scope, function: BoundFunctionMember): void {
+    // TODO check for a symbol with already the name in the same scope
+    list_push(scope.functions, function);
+}
+
+func scope_lookup_function(scope: Scope, name: String): BoundFunctionMember {
+    let i: i32 = 0;
+    while (i < scope.functions.length) {
+        let function: BoundFunctionMember = <BoundFunctionMember>list_get_value(scope.functions, i);
+        i = i + 1;
+
+        if (string_equals(function.name, name)) {
+            return function;
+        }
+    }
+
+    if (scope.parent != null) {
+        return scope_lookup_function(scope.parent, name);
+    }
+
+    return null;
+}
