@@ -1,0 +1,37 @@
+{
+    "name": "lop-vscode",
+    "displayName": "LOP Language Support",
+    "description": "Syntax highlighting for the LOP language",
+    "version": "0.0.14",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "lop",
+                "aliases": [
+                    "LOP",
+                    "lop"
+                ],
+                "extensions": [
+                    ".lop"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "lop",
+                "scopeName": "source.lop",
+                "path": "./syntaxes/lop.tmLanguage.json"
+            }
+        ]
+    },
+    "scripts": {
+        "build": "npm version patch --no-git-tag-version && vsce package --allow-missing-repository"
+    }
+}
