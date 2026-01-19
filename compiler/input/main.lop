@@ -48,5 +48,8 @@ func entry(): i32 {
         list_push(units, unit);
     }
 
+    let binder: Binder = binder_init(units);
+    let program: BoundProgram = binder_bind(binder);
+
     return 0;
 }

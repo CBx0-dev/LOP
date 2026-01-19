@@ -242,7 +242,8 @@ func parser_init(filename: String, content: String): Parser {
 
     // Destroy lexer and collect unnesseary tokens
     lexer = null;
-    gc_mark_sweep();
+    // TODO activate GC
+    // gc_mark_sweep();
 
     let parser: Parser = new Parser();
     
@@ -384,7 +385,7 @@ func parse_type_signature(parser: Parser): TypeSignature {
 
         let rAngle: Token = match_token(parser, TokenKind.RANGLE);
 
-        let dynamic: TypeSignatureDynamic = new TypeSignatureDynamic();
+        dynamic = new TypeSignatureDynamic();
         dynamic.lAngle = lAngle;
         dynamic.generics = generics;
         dynamic.rAngle = rAngle;

@@ -1905,7 +1905,9 @@ i32 entry()
     String content5 = NULL;
     Parser parser6 = NULL;
     CompilationUnit unit7 = NULL;
-    GC_FRAME_INIT(6, GC_LOCAL(files1), GC_LOCAL(units2), GC_LOCAL(file4), GC_LOCAL(content5), GC_LOCAL(parser6), GC_LOCAL(unit7));
+    Binder binder8 = NULL;
+    BoundProgram program9 = NULL;
+    GC_FRAME_INIT(8, GC_LOCAL(files1), GC_LOCAL(units2), GC_LOCAL(file4), GC_LOCAL(content5), GC_LOCAL(parser6), GC_LOCAL(unit7), GC_LOCAL(binder8), GC_LOCAL(program9));
     {
         files1 = (list_init)();
         (list_push)(files1, ((Object)(STRING_CTOR(String_impl, String_type, (uchar*)"./input/main.lop", 16))));
@@ -1928,6 +1930,8 @@ i32 entry()
             unit7 = (parse_compilation_unit)(parser6);
             (list_push)(units2, ((Object)(unit7)));
         }
+        binder8 = (binder_init)(units2);
+        program9 = (binder_bind)(binder8);
         GC_FRAME_DESTROY;
         return 0;
     }
@@ -2680,7 +2684,6 @@ Parser parser_init(String filename0, String content0)
         }
         (list_push)(tokens2, ((Object)(token3)));
         lexer1 = NULL;
-        (gc_mark_sweep)();
         parser4 = OBJECT_CTOR(Parser_impl, Parser_type);
         (parser4)->tokens = tokens2;
         (parser4)->position = 0;
@@ -2847,9 +2850,8 @@ TypeSignature parse_type_signature(Parser parser0)
     Token comma6 = NULL;
     TypeSignatureDynamicGeneric generic7 = NULL;
     Token rAngle8 = NULL;
-    TypeSignatureDynamic dynamic9 = NULL;
-    TypeSignature typeSignature10 = NULL;
-    GC_FRAME_INIT(11, GC_LOCAL(parser0), GC_LOCAL(identifier1), GC_LOCAL(dynamic2), GC_LOCAL(lAngle3), GC_LOCAL(generics4), GC_LOCAL(typeSignature5), GC_LOCAL(comma6), GC_LOCAL(generic7), GC_LOCAL(rAngle8), GC_LOCAL(dynamic9), GC_LOCAL(typeSignature10));
+    TypeSignature typeSignature9 = NULL;
+    GC_FRAME_INIT(10, GC_LOCAL(parser0), GC_LOCAL(identifier1), GC_LOCAL(dynamic2), GC_LOCAL(lAngle3), GC_LOCAL(generics4), GC_LOCAL(typeSignature5), GC_LOCAL(comma6), GC_LOCAL(generic7), GC_LOCAL(rAngle8), GC_LOCAL(typeSignature9));
     {
         identifier1 = (match_token)(parser0, TokenKind_IDENTIFIER);
         dynamic2 = NULL;
@@ -2875,16 +2877,16 @@ TypeSignature parse_type_signature(Parser parser0)
                 (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Generic count cannot be zero", 28));
             }
             rAngle8 = (match_token)(parser0, TokenKind_RANGLE);
-            dynamic9 = OBJECT_CTOR(TypeSignatureDynamic_impl, TypeSignatureDynamic_type);
-            (dynamic9)->lAngle = lAngle3;
-            (dynamic9)->generics = generics4;
-            (dynamic9)->rAngle = rAngle8;
+            dynamic2 = OBJECT_CTOR(TypeSignatureDynamic_impl, TypeSignatureDynamic_type);
+            (dynamic2)->lAngle = lAngle3;
+            (dynamic2)->generics = generics4;
+            (dynamic2)->rAngle = rAngle8;
         }
-        typeSignature10 = OBJECT_CTOR(TypeSignature_impl, TypeSignature_type);
-        (typeSignature10)->identifier = identifier1;
-        (typeSignature10)->dynamic = dynamic2;
+        typeSignature9 = OBJECT_CTOR(TypeSignature_impl, TypeSignature_type);
+        (typeSignature9)->identifier = identifier1;
+        (typeSignature9)->dynamic = dynamic2;
         GC_FRAME_DESTROY;
-        return typeSignature10;
+        return typeSignature9;
     }
     GC_FRAME_DESTROY;
 }
@@ -4051,22 +4053,21 @@ void scope_declare_type(Scope scope0, DataType dataType0)
 {
     GC_FRAME_INIT(2, GC_LOCAL(scope0), GC_LOCAL(dataType0));
     {
-        (list_push)((scope0)->dataTypes, ((Object)(scope0)));
+        (list_push)((scope0)->dataTypes, ((Object)(dataType0)));
     }
     GC_FRAME_DESTROY;
 }
 
 DataType scope_lookup_type(Scope scope0, String name0, ObjectList generics0)
 {
-    i32 i1;
+    ObjectListIterator iter1 = NULL;
     DataType dataType2 = NULL;
-    GC_FRAME_INIT(4, GC_LOCAL(scope0), GC_LOCAL(name0), GC_LOCAL(generics0), GC_LOCAL(dataType2));
+    GC_FRAME_INIT(5, GC_LOCAL(scope0), GC_LOCAL(name0), GC_LOCAL(generics0), GC_LOCAL(iter1), GC_LOCAL(dataType2));
     {
-        i1 = 0;
-        while (i1 < ((scope0)->dataTypes)->length)
+        iter1 = (list_iterator)((scope0)->dataTypes);
+        while ((list_iterator_has_next)(iter1))
         {
-            dataType2 = ((DataType)((list_get_value)((scope0)->dataTypes, i1)));
-            i1 = i1 + 1;
+            dataType2 = ((DataType)((list_iterator_next)(iter1)));
             if ((type_eq_def)(dataType2, name0, generics0))
             {
                 GC_FRAME_DESTROY;
@@ -4330,6 +4331,8 @@ Variable parameter_init(String name0, DataType dataType0)
         (variable1)->name = name0;
         (variable1)->id = 0;
         (variable1)->dataType = dataType0;
+        GC_FRAME_DESTROY;
+        return variable1;
     }
     GC_FRAME_DESTROY;
 }
@@ -4633,7 +4636,8 @@ DataType bind_type_signature(Binder binder0, TypeSignature signature0, bool allo
     {
         if (((Object)((signature0)->dynamic)) != ((Object)(NULL)))
         {
-            (bind_type_signature_dynamic)(binder0, signature0, (signature0)->dynamic);
+            GC_FRAME_DESTROY;
+            return (bind_type_signature_dynamic)(binder0, signature0, (signature0)->dynamic);
         }
         if ((string_equals)(((signature0)->identifier)->value, STRING_CTOR(String_impl, String_type, (uchar*)"void", 4)) && allowVoid0)
         {
@@ -5699,6 +5703,7 @@ BoundFunctionMember bind_extern_function_member(Binder binder0, ExternFunctionMe
         (node11)->variables = (list_init)();
         (node11)->body = NULL;
         (node11)->functionSignature = functionSignature10;
+        (scope_pop_scope)(binder0);
         (scope_declare_function)((binder0)->rootScope, node11);
         GC_FRAME_DESTROY;
         return node11;

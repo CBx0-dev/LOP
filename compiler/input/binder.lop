@@ -373,6 +373,8 @@ func parameter_init(name: String, dataType: DataType): Variable {
     variable.name = name;
     variable.id = 0;
     variable.dataType = dataType;
+
+    return variable;
 }
 
 func unary_operator_init(tokenKind: TokenKind, operandType: DataType, returnType: DataType): BoundUnaryOperator {
@@ -630,7 +632,7 @@ func bind_type_signature_dynamic(binder: Binder, signature: TypeSignature, dynam
 
 func bind_type_signature(binder: Binder, signature: TypeSignature, allowVoid: bool): DataType {
     if (signature.dynamic != null) {
-        bind_type_signature_dynamic(binder, signature, signature.dynamic);
+        return bind_type_signature_dynamic(binder, signature, signature.dynamic);
     }
 
     if (string_equals(signature.identifier.value, "void") && allowVoid) {
@@ -1454,6 +1456,7 @@ func bind_extern_function_member(binder: Binder, externFunctionMember: ExternFun
     node.body = null;
     node.functionSignature = functionSignature;
 
+    scope_pop_scope(binder);
     scope_declare_function(binder.rootScope, node);
     return node;
 }

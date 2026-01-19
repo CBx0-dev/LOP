@@ -2,6 +2,7 @@
 #define LOP_GC_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define GC_ALLOC_TYPE_ATOMIC 0
 #define GC_ALLOC_TYPE_OBJECT 1

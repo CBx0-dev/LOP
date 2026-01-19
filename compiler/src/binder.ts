@@ -1450,6 +1450,7 @@ function bind_extern_function_member(binder: Binder, externFunctionMember: Exter
         functionSignature
     };
 
+    scope_pop_scope(binder);
     scope_declare_function(binder.rootScope, node);
     return node;
 }

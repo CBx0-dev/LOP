@@ -26,14 +26,13 @@ func scope_pop_scope(binder: Binder): void {
 
 func scope_declare_type(scope: Scope, dataType: DataType): void {
     // TODO check for a symbol with already the name
-    list_push(scope.dataTypes, scope);
+    list_push(scope.dataTypes, dataType);
 }
 
 func scope_lookup_type(scope: Scope, name: String, generics: ObjectList): DataType {
-    let i: i32 = 0;
-    while (i < scope.dataTypes.length) {
-        let dataType: DataType = <DataType>list_get_value(scope.dataTypes, i);
-        i = i + 1;
+    let iter: ObjectListIterator = list_iterator(scope.dataTypes);
+    while (list_iterator_has_next(iter)) {
+        let dataType: DataType = <DataType>list_iterator_next(iter);
 
         if (type_eq_def(dataType, name, generics)) {
             return dataType;
