@@ -76,6 +76,7 @@ typedef struct ObjectListItem_impl* ObjectListItem;
 typedef struct ObjectList_impl* ObjectList;
 typedef struct ObjectListIterator_impl* ObjectListIterator;
 typedef struct Lexer_impl* Lexer;
+typedef struct LocationSpan_impl* LocationSpan;
 typedef struct Token_impl* Token;
 typedef struct Parser_impl* Parser;
 typedef struct CompilationUnit_impl* CompilationUnit;
@@ -216,6 +217,8 @@ struct Lexer_impl
     String filename;
     String content;
     i32 position;
+    i32 currentLine;
+    i32 currentCol;
 };
 
 static void Lexer_trace(const void* _obj, gc_mark_fn mark)
@@ -228,17 +231,33 @@ static void Lexer_trace(const void* _obj, gc_mark_fn mark)
 ObjectType Lexer_type = {
     .trace = Lexer_trace
 };
+struct LocationSpan_impl
+{
+    ObjectType* __type_header__;
+    i32 startPos;
+    i32 endPos;
+    i32 startLine;
+    i32 endLine;
+    i32 startCol;
+    i32 endCol;
+};
+
+ObjectType LocationSpan_type = {
+    .trace = object_empty_trace
+};
 struct Token_impl
 {
     ObjectType* __type_header__;
     TokenKind kind;
     String value;
+    LocationSpan span;
 };
 
 static void Token_trace(const void* _obj, gc_mark_fn mark)
 {
     const Token obj = (Token)_obj;
     mark(obj->value);
+    mark(obj->span);
 }
 
 ObjectType Token_type = {
@@ -1729,7 +1748,8 @@ ObjectListIterator list_iterator(ObjectList list0);
 bool list_iterator_has_next(ObjectListIterator iterator0);
 Object list_iterator_next(ObjectListIterator iterator0);
 Lexer lexer_init(String filename0, String content0);
-Token token_init(TokenKind kind0, String value0);
+LocationSpan locationSpan_init(i32 startPos0, i32 endPos0, i32 startLine0, i32 endLine0, i32 startCol0, i32 endCol0);
+Token token_init(TokenKind kind0, String value0, LocationSpan span0);
 bool lexer_is_eof(Lexer lexer0);
 uchar current_char(Lexer lexer0);
 uchar peek_char(Lexer lexer0);
@@ -1891,7 +1911,6 @@ i32 main()
     i32 exit1;
     {
         exit1 = (entry)();
-        (gc_mark_sweep)();
         return exit1;
     }
 }
@@ -1910,7 +1929,7 @@ i32 entry()
     GC_FRAME_INIT(8, GC_LOCAL(files1), GC_LOCAL(units2), GC_LOCAL(file4), GC_LOCAL(content5), GC_LOCAL(parser6), GC_LOCAL(unit7), GC_LOCAL(binder8), GC_LOCAL(program9));
     {
         files1 = (list_init)();
-        (list_push)(files1, ((Object)(STRING_CTOR(String_impl, String_type, (uchar*)"./input/main.lop", 16))));
+        (list_push)(files1, ((Object)(STRING_CTOR(String_impl, String_type, (uchar*)"./input/panic.lop", 17))));
         (list_push)(files1, ((Object)(STRING_CTOR(String_impl, String_type, (uchar*)"./input/char.lop", 16))));
         (list_push)(files1, ((Object)(STRING_CTOR(String_impl, String_type, (uchar*)"./input/main.lop", 16))));
         (list_push)(files1, ((Object)(STRING_CTOR(String_impl, String_type, (uchar*)"./input/list.lop", 16))));
@@ -2164,20 +2183,41 @@ Lexer lexer_init(String filename0, String content0)
         (lexer1)->filename = filename0;
         (lexer1)->content = content0;
         (lexer1)->position = 0;
+        (lexer1)->currentCol = 1;
+        (lexer1)->currentLine = 1;
         GC_FRAME_DESTROY;
         return lexer1;
     }
     GC_FRAME_DESTROY;
 }
 
-Token token_init(TokenKind kind0, String value0)
+LocationSpan locationSpan_init(i32 startPos0, i32 endPos0, i32 startLine0, i32 endLine0, i32 startCol0, i32 endCol0)
+{
+    LocationSpan span1 = NULL;
+    GC_FRAME_INIT(1, GC_LOCAL(span1));
+    {
+        span1 = OBJECT_CTOR(LocationSpan_impl, LocationSpan_type);
+        (span1)->startPos = startPos0;
+        (span1)->endPos = endPos0;
+        (span1)->startLine = startLine0;
+        (span1)->endLine = endLine0;
+        (span1)->startCol = startCol0;
+        (span1)->endCol = endCol0;
+        GC_FRAME_DESTROY;
+        return span1;
+    }
+    GC_FRAME_DESTROY;
+}
+
+Token token_init(TokenKind kind0, String value0, LocationSpan span0)
 {
     Token token1 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(value0), GC_LOCAL(token1));
+    GC_FRAME_INIT(3, GC_LOCAL(value0), GC_LOCAL(span0), GC_LOCAL(token1));
     {
         token1 = OBJECT_CTOR(Token_impl, Token_type);
         (token1)->kind = kind0;
         (token1)->value = value0;
+        (token1)->span = span0;
         GC_FRAME_DESTROY;
         return token1;
     }
@@ -2230,6 +2270,15 @@ uchar next_char(Lexer lexer0)
     GC_FRAME_INIT(1, GC_LOCAL(lexer0));
     {
         c1 = (current_char)(lexer0);
+        if (c1 == '\n')
+        {
+            (lexer0)->currentLine = (lexer0)->currentLine + 1;
+            (lexer0)->currentCol = 1;
+        }
+        else
+        {
+            (lexer0)->currentCol = (lexer0)->currentCol + 1;
+        }
         (lexer0)->position = (lexer0)->position + 1;
         GC_FRAME_DESTROY;
         return c1;
@@ -2239,150 +2288,173 @@ uchar next_char(Lexer lexer0)
 
 Token lex_whitespace(Lexer lexer0)
 {
-    i32 start1;
-    String value2 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value2));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    String value4 = NULL;
+    LocationSpan span5 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value4), GC_LOCAL(span5));
     {
-        start1 = (lexer0)->position;
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
         while ((char_is_whitespace)((current_char)(lexer0)) && !(lexer_is_eof)(lexer0))
         {
-            (lexer0)->position = (lexer0)->position + 1;
+            (next_char)(lexer0);
         }
-        value2 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
+        value4 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        span5 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(TokenKind_WHITESPACE, value2);
+        return (token_init)(TokenKind_WHITESPACE, value4, span5);
     }
     GC_FRAME_DESTROY;
 }
 
 Token lex_identifier(Lexer lexer0)
 {
-    i32 start1;
-    TokenKind kind2;
-    String value3 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value3));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    TokenKind kind4;
+    String value5 = NULL;
+    LocationSpan span6 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value5), GC_LOCAL(span6));
     {
-        start1 = (lexer0)->position;
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
         while (((char_is_alpha_numeric)((current_char)(lexer0)) || (current_char)(lexer0) == '_') && !(lexer_is_eof)(lexer0))
         {
             (next_char)(lexer0);
         }
-        kind2 = TokenKind_IDENTIFIER;
-        value3 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"type", 4)))
+        kind4 = TokenKind_IDENTIFIER;
+        value5 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"type", 4)))
         {
-            kind2 = TokenKind_TYPE_KEYWORD;
+            kind4 = TokenKind_TYPE_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"func", 4)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"func", 4)))
         {
-            kind2 = TokenKind_FUNCTION_KEYWORD;
+            kind4 = TokenKind_FUNCTION_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"enum", 4)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"enum", 4)))
         {
-            kind2 = TokenKind_ENUM_KEYWORD;
+            kind4 = TokenKind_ENUM_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"let", 3)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"let", 3)))
         {
-            kind2 = TokenKind_LET_KEYWORD;
+            kind4 = TokenKind_LET_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"new", 3)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"new", 3)))
         {
-            kind2 = TokenKind_NEW_KEYWORD;
+            kind4 = TokenKind_NEW_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"if", 2)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"if", 2)))
         {
-            kind2 = TokenKind_IF_KEYWORD;
+            kind4 = TokenKind_IF_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"else", 4)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"else", 4)))
         {
-            kind2 = TokenKind_ELSE_KEYWORD;
+            kind4 = TokenKind_ELSE_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"while", 5)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"while", 5)))
         {
-            kind2 = TokenKind_WHILE_KEYWORD;
+            kind4 = TokenKind_WHILE_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"return", 6)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"return", 6)))
         {
-            kind2 = TokenKind_RETURN_KEYWORD;
+            kind4 = TokenKind_RETURN_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"true", 4)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"true", 4)))
         {
-            kind2 = TokenKind_TRUE_KEYWORD;
+            kind4 = TokenKind_TRUE_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"false", 5)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"false", 5)))
         {
-            kind2 = TokenKind_FALSE_KEYWORD;
+            kind4 = TokenKind_FALSE_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"extern", 6)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"extern", 6)))
         {
-            kind2 = TokenKind_EXTERN_KEYWORD;
+            kind4 = TokenKind_EXTERN_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"null", 4)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"null", 4)))
         {
-            kind2 = TokenKind_NULL_KEYWORD;
+            kind4 = TokenKind_NULL_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"break", 5)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"break", 5)))
         {
-            kind2 = TokenKind_BREAK_KEYWORD;
+            kind4 = TokenKind_BREAK_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"continue", 8)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"continue", 8)))
         {
-            kind2 = TokenKind_CONTINUE_KEYWORD;
+            kind4 = TokenKind_CONTINUE_KEYWORD;
         }
         else
-        if ((string_equals)(value3, STRING_CTOR(String_impl, String_type, (uchar*)"is", 2)))
+        if ((string_equals)(value5, STRING_CTOR(String_impl, String_type, (uchar*)"is", 2)))
         {
-            kind2 = TokenKind_IS_KEYWORD;
+            kind4 = TokenKind_IS_KEYWORD;
         }
+        span6 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(kind2, value3);
+        return (token_init)(kind4, value5, span6);
     }
     GC_FRAME_DESTROY;
 }
 
 Token lex_numeric(Lexer lexer0)
 {
-    i32 start1;
-    String value2 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value2));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    String value4 = NULL;
+    LocationSpan span5 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value4), GC_LOCAL(span5));
     {
-        start1 = (lexer0)->position;
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
         while ((char_is_numeric)((current_char)(lexer0)) && !(lexer_is_eof)(lexer0))
         {
             (next_char)(lexer0);
         }
-        value2 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
+        value4 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        span5 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(TokenKind_INTEGER_LITERAL, value2);
+        return (token_init)(TokenKind_INTEGER_LITERAL, value4, span5);
     }
     GC_FRAME_DESTROY;
 }
 
 Token lex_char(Lexer lexer0)
 {
-    i32 start1;
-    uchar c2;
-    String value3 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value3));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    uchar c4;
+    String value5 = NULL;
+    LocationSpan span6 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value5), GC_LOCAL(span6));
     {
-        start1 = (lexer0)->position;
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
         (next_char)(lexer0);
-        c2 = (next_char)(lexer0);
-        if (c2 == '\\')
+        c4 = (next_char)(lexer0);
+        if (c4 == '\\')
         {
             (next_char)(lexer0);
         }
@@ -2391,20 +2463,26 @@ Token lex_char(Lexer lexer0)
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Missing char close", 18));
         }
         (next_char)(lexer0);
-        value3 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
+        value5 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        span6 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(TokenKind_CHAR_LITERAL, value3);
+        return (token_init)(TokenKind_CHAR_LITERAL, value5, span6);
     }
     GC_FRAME_DESTROY;
 }
 
 Token lex_string(Lexer lexer0)
 {
-    i32 start1;
-    String value2 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value2));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    String value4 = NULL;
+    LocationSpan span5 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value4), GC_LOCAL(span5));
     {
-        start1 = (lexer0)->position;
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
         (next_char)(lexer0);
         while ((current_char)(lexer0) != '"' && !(lexer_is_eof)(lexer0))
         {
@@ -2420,63 +2498,79 @@ Token lex_string(Lexer lexer0)
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Missing string close", 20));
         }
         (next_char)(lexer0);
-        value2 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
+        value4 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        span5 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(TokenKind_STRING_LITERAL, value2);
+        return (token_init)(TokenKind_STRING_LITERAL, value4, span5);
     }
     GC_FRAME_DESTROY;
 }
 
 Token lex_single_line_comment(Lexer lexer0)
 {
-    i32 start1;
-    String value2 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value2));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    String value4 = NULL;
+    LocationSpan span5 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value4), GC_LOCAL(span5));
     {
-        start1 = (lexer0)->position;
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
         while ((current_char)(lexer0) != '\n' && !(lexer_is_eof)(lexer0))
         {
             (next_char)(lexer0);
         }
-        value2 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
+        value4 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        span5 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(TokenKind_SINGLE_COMMENT, value2);
+        return (token_init)(TokenKind_SINGLE_COMMENT, value4, span5);
     }
     GC_FRAME_DESTROY;
 }
 
 Token lex_multi_line_comment(Lexer lexer0)
 {
-    i32 start1;
-    String value2 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value2));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    String value4 = NULL;
+    LocationSpan span5 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value4), GC_LOCAL(span5));
     {
-        start1 = (lexer0)->position;
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
         while (((current_char)(lexer0) != '*' || (peek_char)(lexer0) != '/') && !(lexer_is_eof)(lexer0))
         {
             (next_char)(lexer0);
         }
         (next_char)(lexer0);
         (next_char)(lexer0);
-        value2 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
+        value4 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        span5 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(TokenKind_MULTI_COMMENT, value2);
+        return (token_init)(TokenKind_MULTI_COMMENT, value4, span5);
     }
     GC_FRAME_DESTROY;
 }
 
 Token lexer_next_token(Lexer lexer0)
 {
-    i32 start1;
-    uchar curr2;
-    TokenKind kind3;
-    String value4 = NULL;
-    GC_FRAME_INIT(2, GC_LOCAL(lexer0), GC_LOCAL(value4));
+    i32 startPos1;
+    i32 startLine2;
+    i32 startCol3;
+    uchar curr4;
+    TokenKind kind5;
+    String value6 = NULL;
+    LocationSpan span7 = NULL;
+    GC_FRAME_INIT(3, GC_LOCAL(lexer0), GC_LOCAL(value6), GC_LOCAL(span7));
     {
         if ((lexer_is_eof)(lexer0))
         {
             GC_FRAME_DESTROY;
-            return (token_init)(TokenKind_EOF, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
+            return (token_init)(TokenKind_EOF, STRING_CTOR(String_impl, String_type, (uchar*)"", 0), (locationSpan_init)((lexer0)->position, (lexer0)->position, (lexer0)->currentLine, (lexer0)->currentLine, (lexer0)->currentCol, (lexer0)->currentCol));
         }
         if ((char_is_whitespace)((current_char)(lexer0)))
         {
@@ -2513,152 +2607,155 @@ Token lexer_next_token(Lexer lexer0)
             GC_FRAME_DESTROY;
             return (lex_single_line_comment)(lexer0);
         }
-        start1 = (lexer0)->position;
-        curr2 = (next_char)(lexer0);
-        if (curr2 == '(')
+        startPos1 = (lexer0)->position;
+        startLine2 = (lexer0)->currentLine;
+        startCol3 = (lexer0)->currentCol;
+        curr4 = (next_char)(lexer0);
+        if (curr4 == '(')
         {
-            kind3 = TokenKind_LPAREN;
+            kind5 = TokenKind_LPAREN;
         }
         else
-        if (curr2 == ')')
+        if (curr4 == ')')
         {
-            kind3 = TokenKind_RPAREN;
+            kind5 = TokenKind_RPAREN;
         }
         else
-        if (curr2 == '{')
+        if (curr4 == '{')
         {
-            kind3 = TokenKind_LBRACE;
+            kind5 = TokenKind_LBRACE;
         }
         else
-        if (curr2 == '}')
+        if (curr4 == '}')
         {
-            kind3 = TokenKind_RBRACE;
+            kind5 = TokenKind_RBRACE;
         }
         else
-        if (curr2 == ';')
+        if (curr4 == ';')
         {
-            kind3 = TokenKind_SEMICOLON;
+            kind5 = TokenKind_SEMICOLON;
         }
         else
-        if (curr2 == ':')
+        if (curr4 == ':')
         {
-            kind3 = TokenKind_COLON;
+            kind5 = TokenKind_COLON;
         }
         else
-        if (curr2 == '=')
-        {
-            if ((current_char)(lexer0) == '=')
-            {
-                (next_char)(lexer0);
-                kind3 = TokenKind_EQUALS_EQUALS;
-            }
-            else
-            {
-                kind3 = TokenKind_EQUALS;
-            }
-        }
-        else
-        if (curr2 == '!')
+        if (curr4 == '=')
         {
             if ((current_char)(lexer0) == '=')
             {
                 (next_char)(lexer0);
-                kind3 = TokenKind_BANG_EQUALS;
+                kind5 = TokenKind_EQUALS_EQUALS;
             }
             else
             {
-                kind3 = TokenKind_BANG;
+                kind5 = TokenKind_EQUALS;
             }
         }
         else
-        if (curr2 == '+')
+        if (curr4 == '!')
         {
-            kind3 = TokenKind_PLUS;
+            if ((current_char)(lexer0) == '=')
+            {
+                (next_char)(lexer0);
+                kind5 = TokenKind_BANG_EQUALS;
+            }
+            else
+            {
+                kind5 = TokenKind_BANG;
+            }
         }
         else
-        if (curr2 == '-')
+        if (curr4 == '+')
         {
-            kind3 = TokenKind_MINUS;
+            kind5 = TokenKind_PLUS;
         }
         else
-        if (curr2 == '*')
+        if (curr4 == '-')
         {
-            kind3 = TokenKind_STAR;
+            kind5 = TokenKind_MINUS;
         }
         else
-        if (curr2 == '/')
+        if (curr4 == '*')
         {
-            kind3 = TokenKind_SLASH;
+            kind5 = TokenKind_STAR;
         }
         else
-        if (curr2 == '&')
+        if (curr4 == '/')
+        {
+            kind5 = TokenKind_SLASH;
+        }
+        else
+        if (curr4 == '&')
         {
             if ((current_char)(lexer0) == '&')
             {
                 (next_char)(lexer0);
-                kind3 = TokenKind_AND_AND;
+                kind5 = TokenKind_AND_AND;
             }
             else
             {
-                kind3 = TokenKind_AND;
+                kind5 = TokenKind_AND;
             }
         }
         else
-        if (curr2 == '|')
+        if (curr4 == '|')
         {
             if ((current_char)(lexer0) == '|')
             {
                 (next_char)(lexer0);
-                kind3 = TokenKind_OR_OR;
+                kind5 = TokenKind_OR_OR;
             }
             else
             {
-                kind3 = TokenKind_OR;
+                kind5 = TokenKind_OR;
             }
         }
         else
-        if (curr2 == '<')
+        if (curr4 == '<')
         {
             if ((current_char)(lexer0) == '=')
             {
                 (next_char)(lexer0);
-                kind3 = TokenKind_LANGLE_EQUALS;
+                kind5 = TokenKind_LANGLE_EQUALS;
             }
             else
             {
-                kind3 = TokenKind_LANGLE;
+                kind5 = TokenKind_LANGLE;
             }
         }
         else
-        if (curr2 == '>')
+        if (curr4 == '>')
         {
             if ((current_char)(lexer0) == '=')
             {
                 (next_char)(lexer0);
-                kind3 = TokenKind_RANGLE_EQUALS;
+                kind5 = TokenKind_RANGLE_EQUALS;
             }
             else
             {
-                kind3 = TokenKind_RANGLE;
+                kind5 = TokenKind_RANGLE;
             }
         }
         else
-        if (curr2 == ',')
+        if (curr4 == ',')
         {
-            kind3 = TokenKind_COMMA;
+            kind5 = TokenKind_COMMA;
         }
         else
-        if (curr2 == '.')
+        if (curr4 == '.')
         {
-            kind3 = TokenKind_DOT;
+            kind5 = TokenKind_DOT;
         }
         else
         {
-            kind3 = TokenKind_ERROR;
+            kind5 = TokenKind_ERROR;
         }
-        value4 = (string_substring)((lexer0)->content, start1, (lexer0)->position);
+        value6 = (string_substring)((lexer0)->content, startPos1, (lexer0)->position);
+        span7 = (locationSpan_init)(startPos1, (lexer0)->position, startLine2, (lexer0)->currentLine, startCol3, (lexer0)->currentCol);
         GC_FRAME_DESTROY;
-        return (token_init)(kind3, value4);
+        return (token_init)(kind5, value6, span7);
     }
     GC_FRAME_DESTROY;
 }
@@ -3930,28 +4027,28 @@ ObjectList conversion_classify(Binder binder0, DataType from0, DataType to0, boo
             GC_FRAME_DESTROY;
             return (list_init)();
         }
-        if ((from0)->definition != NULL && OBJECT_TYPEOF((from0)->definition) == &TypeMember_type && (type_eq_type)(to0, (binder0)->objectType))
+        if ((from0)->definition != NULL && OBJECT_TYPEOF((from0)->definition) == &BoundTypeMember_type && (type_eq_type)(to0, (binder0)->objectType))
         {
             list1 = (list_init)();
             (list_push)(list1, ((Object)((rule_init)(from0, to0, ConversionKind_IMPLICIT))));
             GC_FRAME_DESTROY;
             return list1;
         }
-        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != NULL && OBJECT_TYPEOF((to0)->definition) == &TypeMember_type)
+        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != NULL && OBJECT_TYPEOF((to0)->definition) == &BoundTypeMember_type)
         {
             list2 = (list_init)();
             (list_push)(list2, ((Object)((rule_init)(from0, to0, ConversionKind_EXPLICIT))));
             GC_FRAME_DESTROY;
             return list2;
         }
-        if ((from0)->definition != NULL && OBJECT_TYPEOF((from0)->definition) == &EnumMember_type && (type_eq_type)(to0, (binder0)->i32Type))
+        if ((from0)->definition != NULL && OBJECT_TYPEOF((from0)->definition) == &BoundEnumMember_type && (type_eq_type)(to0, (binder0)->i32Type))
         {
             list3 = (list_init)();
             (list_push)(list3, ((Object)((rule_init)(from0, to0, ConversionKind_IMPLICIT))));
             GC_FRAME_DESTROY;
             return list3;
         }
-        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != NULL && OBJECT_TYPEOF((to0)->definition) == &TypeMember_type)
+        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != NULL && OBJECT_TYPEOF((to0)->definition) == &BoundEnumMember_type)
         {
             list4 = (list_init)();
             (list_push)(list4, ((Object)((rule_init)(from0, to0, ConversionKind_EXPLICIT))));
@@ -4392,7 +4489,7 @@ Binder binder_init(ObjectList units0)
     {
         scope1 = (scope_init)(NULL);
         voidType2 = (type_init_simple)(DataTypeKind_PRIMITIVE, STRING_CTOR(String_impl, String_type, (uchar*)"void", 4), STRING_CTOR(String_impl, String_type, (uchar*)"void", 4));
-        objectType3 = (type_init_simple)(DataTypeKind_PRIMITIVE, STRING_CTOR(String_impl, String_type, (uchar*)"Object", 6), STRING_CTOR(String_impl, String_type, (uchar*)"Object", 6));
+        objectType3 = (type_init_simple)(DataTypeKind_OBJECT, STRING_CTOR(String_impl, String_type, (uchar*)"Object", 6), STRING_CTOR(String_impl, String_type, (uchar*)"Object", 6));
         boolType4 = (type_init_simple)(DataTypeKind_PRIMITIVE, STRING_CTOR(String_impl, String_type, (uchar*)"bool", 4), STRING_CTOR(String_impl, String_type, (uchar*)"bool", 4));
         charType5 = (type_init_simple)(DataTypeKind_PRIMITIVE, STRING_CTOR(String_impl, String_type, (uchar*)"char", 4), STRING_CTOR(String_impl, String_type, (uchar*)"uchar", 5));
         u8Type6 = (type_init_simple)(DataTypeKind_PRIMITIVE, STRING_CTOR(String_impl, String_type, (uchar*)"u8", 2), STRING_CTOR(String_impl, String_type, (uchar*)"u8", 2));
@@ -4912,6 +5009,7 @@ BoundCallExpression bind_call_expression(Binder binder0, CallExpression callExpr
         {
             expectedType5 = ((DataType)((list_get_value)((calleeReturnType2)->generics, i4 + 1)));
             argument6 = (bind_expression)(binder0, ((((CallExpressionArgument)((list_get_value)((callExpression0)->arguments, i4)))))->expression, expectedType5);
+            i4 = i4 + 1;
             (list_push)(arguments3, argument6);
         }
         node7 = OBJECT_CTOR(BoundCallExpression_impl, BoundCallExpression_type);
@@ -4963,6 +5061,8 @@ Object bind_member_expression(Binder binder0, MemberExpression memberExpression0
                     (node8)->returnType = (item7)->dataType;
                     (node8)->object = object2;
                     (node8)->identifier = identifier4;
+                    GC_FRAME_DESTROY;
+                    return ((Object)(node8));
                 }
             }
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Item not found in Type", 22));

@@ -57,11 +57,23 @@ type Lexer {
     filename: String;
     content: String;
     position: i32;
+    currentLine: i32;
+    currentCol: i32;
+}
+
+type LocationSpan {
+    startPos: i32;
+    endPos: i32;
+    startLine: i32;
+    endLine: i32;
+    startCol: i32;
+    endCol: i32;
 }
 
 type Token {
     kind: TokenKind;
     value: String;
+    span: LocationSpan;
 }
 
 func lexer_init(filename: String, content: String): Lexer {
@@ -70,15 +82,31 @@ func lexer_init(filename: String, content: String): Lexer {
     lexer.filename = filename;
     lexer.content = content;
     lexer.position = 0;
+    lexer.currentCol = 1;
+    lexer.currentLine = 1;
 
     return lexer;
 }
 
-func token_init(kind: TokenKind, value: String): Token {
+func locationSpan_init(startPos: i32, endPos: i32, startLine: i32, endLine: i32, startCol: i32, endCol: i32): LocationSpan {
+    let span: LocationSpan = new LocationSpan();
+    
+    span.startPos = startPos;
+    span.endPos = endPos;
+    span.startLine = startLine;
+    span.endLine = endLine;
+    span.startCol = startCol;
+    span.endCol = endCol;
+
+    return span;
+}
+
+func token_init(kind: TokenKind, value: String, span: LocationSpan): Token {
     let token: Token = new Token();
     
     token.kind = kind;
     token.value = value;
+    token.span = span;
 
     return token;
 }
@@ -106,29 +134,43 @@ func peek_char(lexer: Lexer): char {
 func next_char(lexer: Lexer): char {
     let c: char = current_char(lexer);
     
+    if (c == '\n') {
+        lexer.currentLine = lexer.currentLine + 1;
+        lexer.currentCol = 1;
+    } else {
+        lexer.currentCol = lexer.currentCol + 1;
+    }
+
     lexer.position = lexer.position + 1;
     
     return c;
 }
 
 func lex_whitespace(lexer: Lexer): Token {
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
+
     while (char_is_whitespace(current_char(lexer)) && !lexer_is_eof(lexer)) {
-        lexer.position = lexer.position + 1;
+        next_char(lexer);
     }
 
-    let value: String = string_substring(lexer.content, start, lexer.position);
-    return token_init(TokenKind.WHITESPACE, value);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    return token_init(TokenKind.WHITESPACE, value, span);
 }
 
 func lex_identifier(lexer: Lexer): Token {
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
+
     while ((char_is_alpha_numeric(current_char(lexer)) || current_char(lexer) == '_') && !lexer_is_eof(lexer)) {
         next_char(lexer);
     }
 
     let kind: TokenKind = TokenKind.IDENTIFIER;
-    let value: String = string_substring(lexer.content, start, lexer.position);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
     
     if (string_equals(value, "type")) {
         kind = TokenKind.TYPE_KEYWORD;
@@ -163,23 +205,33 @@ func lex_identifier(lexer: Lexer): Token {
     } else if (string_equals(value, "is")) {
         kind = TokenKind.IS_KEYWORD;
     }
+    
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
 
-    return token_init(kind, value);
+    return token_init(kind, value, span);
 }
 
 func lex_numeric(lexer: Lexer): Token {
     // TODO parse floating point literals
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
+
     while (char_is_numeric(current_char(lexer)) && !lexer_is_eof(lexer)) {
         next_char(lexer);
     }
 
-    let value: String = string_substring(lexer.content, start, lexer.position);
-    return token_init(TokenKind.INTEGER_LITERAL, value);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    return token_init(TokenKind.INTEGER_LITERAL, value, span);
 }
 
 func lex_char(lexer: Lexer): Token {
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
+
+
     next_char(lexer); // "'"
     let c: char = next_char(lexer);
     if (c == '\\') {
@@ -193,12 +245,15 @@ func lex_char(lexer: Lexer): Token {
 
     next_char(lexer); // "'"
 
-    let value: String = string_substring(lexer.content, start, lexer.position);
-    return token_init(TokenKind.CHAR_LITERAL, value);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    return token_init(TokenKind.CHAR_LITERAL, value, span);
 }
 
 func lex_string(lexer: Lexer): Token {
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
     next_char(lexer);
 
     while (current_char(lexer) != '"' && !lexer_is_eof(lexer)) {
@@ -214,22 +269,30 @@ func lex_string(lexer: Lexer): Token {
     }
     next_char(lexer);
 
-    let value: String = string_substring(lexer.content, start, lexer.position);
-    return token_init(TokenKind.STRING_LITERAL, value);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    return token_init(TokenKind.STRING_LITERAL, value, span);
 }
 
 func lex_single_line_comment(lexer: Lexer): Token {
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
+
     while (current_char(lexer) != '\n' && !lexer_is_eof(lexer)) {
         next_char(lexer);
     }
 
-    let value: String = string_substring(lexer.content, start, lexer.position);
-    return token_init(TokenKind.SINGLE_COMMENT, value);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    return token_init(TokenKind.SINGLE_COMMENT, value, span);
 }
 
 func lex_multi_line_comment(lexer: Lexer): Token {
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
+
     while ((current_char(lexer) != '*' || peek_char(lexer) != '/') && !lexer_is_eof(lexer)) {
         next_char(lexer);
     }
@@ -237,13 +300,14 @@ func lex_multi_line_comment(lexer: Lexer): Token {
     next_char(lexer);
     next_char(lexer);
 
-    let value: String = string_substring(lexer.content, start, lexer.position);
-    return token_init(TokenKind.MULTI_COMMENT, value);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    return token_init(TokenKind.MULTI_COMMENT, value, span);
 }
 
 func lexer_next_token(lexer: Lexer): Token {
     if (lexer_is_eof(lexer)) {
-        return token_init(TokenKind.EOF, "");
+        return token_init(TokenKind.EOF, "", locationSpan_init(lexer.position, lexer.position, lexer.currentLine, lexer.currentLine, lexer.currentCol, lexer.currentCol));
     }
 
     if (char_is_whitespace(current_char(lexer))) {
@@ -274,7 +338,9 @@ func lexer_next_token(lexer: Lexer): Token {
         return lex_single_line_comment(lexer);
     }
 
-    let start: i32 = lexer.position;
+    let startPos: i32 = lexer.position;
+    let startLine: i32 = lexer.currentLine;
+    let startCol: i32 = lexer.currentCol;
     let curr: char = next_char(lexer);
     let kind: TokenKind;
 
@@ -348,6 +414,7 @@ func lexer_next_token(lexer: Lexer): Token {
         kind = TokenKind.ERROR;
     }
 
-    let value: String = string_substring(lexer.content, start, lexer.position);
-    return token_init(kind, value);
+    let value: String = string_substring(lexer.content, startPos, lexer.position);
+    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    return token_init(kind, value, span);
 }

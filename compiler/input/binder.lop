@@ -402,7 +402,7 @@ func binder_init(units: ObjectList): Binder {
     let scope: Scope = scope_init(null);
 
     let voidType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "void", "void");
-    let objectType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "Object", "Object");
+    let objectType: DataType = type_init_simple(DataTypeKind.OBJECT, "Object", "Object");
     let boolType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "bool", "bool");
     let charType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "char", "uchar");
 
@@ -840,6 +840,9 @@ func bind_call_expression(binder: Binder, callExpression: CallExpression): Bound
     while (i < callExpression.arguments.length) {
         let expectedType: DataType = <DataType>list_get_value(calleeReturnType.generics, i + 1);
         let argument: Object = bind_expression(binder, (<CallExpressionArgument>list_get_value(callExpression.arguments, i)).expression, expectedType);
+        
+        i = i + 1;
+
         list_push(arguments, argument);
     }
 
@@ -877,6 +880,8 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
                 node.returnType = item.dataType;
                 node.object = object;
                 node.identifier = identifier;
+
+                return node;
             }
         }
 

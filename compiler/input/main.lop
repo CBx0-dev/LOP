@@ -17,14 +17,15 @@ extern type String {
 
 func main(): i32 {
     let exit: i32 = entry();
-    gc_mark_sweep();
+    // TODO activate GC
+    // gc_mark_sweep();
 
     return exit;
 }
 
 func entry(): i32 {
     let files: ObjectList = list_init();
-    list_push(files, "./input/main.lop");
+    list_push(files, "./input/panic.lop");
     list_push(files, "./input/char.lop");
     list_push(files, "./input/main.lop");
     list_push(files, "./input/list.lop");
