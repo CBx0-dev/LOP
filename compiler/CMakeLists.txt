@@ -5,14 +5,19 @@ set(CMAKE_C_STANDARD 11)
 
 include_directories(runtime)
 
-add_executable(gen
-        runtime/main.c
-        runtime/gc.c
-        runtime/gc.h
-        runtime/object.c
-        runtime/object.h
-        runtime/primitive.h
-        runtime/string_obj.c
-        runtime/string_obj.h
-        runtime/fs.c
+add_library(runtime STATIC
+    runtime/gc.c
+    runtime/gc.h
+    runtime/object.c
+    runtime/object.h
+    runtime/primitive.h
 )
+
+add_executable(gen
+        output/main.c
+        output/string_obj.c
+        output/string_obj.h
+        output/fs.c
+)
+
+target_link_libraries(gen PRIVATE runtime)

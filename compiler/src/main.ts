@@ -26,7 +26,7 @@ for (const filename of files) {
     units.push(unit);
 }
 
-const outputFilename: string = path.join(__dirname, "..", "runtime", "main.c");
+const outputFilename: string = path.join(__dirname, "..", "output", "main.c");
 
 const binder: Binder = binder_init(units);
 const program: BoundProgram = binder_bind(binder);

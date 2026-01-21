@@ -1,7 +1,7 @@
 #ifndef LOP_STRING_OBJ_H
 #define LOP_STRING_OBJ_H
 
-#include "object.h"
+#include "../runtime/object.h"
 
 static inline void* __string_ctor(const size_t size, ObjectType* header, uchar* buff, i32 length)
 {
