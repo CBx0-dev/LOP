@@ -82,10 +82,10 @@ Lexer, Parser, Binder, and Emitter.
 ## Transpilation status
 
 - [x] binder.ts
-- [ ] c_emitter.ts
+- [x] c_emitter.ts
 - [x] char.ts
 - [x] conversion.ts
 - [x] lexer.ts
-- [ ] main.ts
+- [x] main.ts
 - [x] parser.ts
 - [x] scope.ts

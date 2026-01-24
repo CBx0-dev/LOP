@@ -56,17 +56,17 @@ function write(emitter: Emitter, content: string): void {
     emitter.stream.write(content);
 }
 
+function writeln(emitter: Emitter, content: string): void {
+    write(emitter, content);
+    emitter.stream.write("\n");
+}
+
 function write_nit(emitter: Emitter, content: string): void {
     emitter.stream.write(content);
 }
 
 function writeln_nit(emitter: Emitter, content: string): void {
     emitter.stream.write(content);
-    emitter.stream.write("\n");
-}
-
-function writeln(emitter: Emitter, content: string): void {
-    write(emitter, content);
     emitter.stream.write("\n");
 }
 

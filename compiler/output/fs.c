@@ -28,3 +28,24 @@ String fs_read_file(String path)
 
     return STRING_CTOR(String_impl, String_type, buff, size);
 }
+
+Object fs_open_file(String path)
+{
+    FILE* file = fopen((const char*)path->buff, "wb");
+    return file;
+}
+
+void fs_write_string(Object file, String str)
+{
+    fprintf(file, "%s", (const char*)str->buff);
+}
+
+void fs_write_int(Object file, i32 value)
+{
+    fprintf(file, "%i", value);
+}
+
+void fs_close_file(Object file)
+{
+    fclose((FILE*)file);
+}

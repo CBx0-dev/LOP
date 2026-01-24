@@ -1,0 +1,693 @@
+extern func fs_open_file(path: String): Object;
+extern func fs_write_string(file: Object, value: String): void;
+extern func fs_write_int(file: Object, value: i32): void;
+extern func fs_close_file(file: Object): void;
+
+type Emitter {
+    file: Object;
+    intention: i32;
+    currentFunction: BoundFunctionMember;
+}
+
+func emitter_init(file: Object): Emitter {
+    let emitter: Emitter = new Emitter();
+
+    emitter.file = file;
+    emitter.intention = 0;
+    emitter.currentFunction = null;
+
+    return emitter;
+}
+
+func write_intended(emitter: Emitter, content: String): void {
+    let i: i32 = 0;
+    while (i < emitter.intention) {
+        i = i + 1;
+        fs_write_string(emitter.file, " ");
+    }
+
+    fs_write_string(emitter.file, content);
+}
+
+func writeln_intended(emitter: Emitter, content: String): void {
+    write_intended(emitter, content);
+    fs_write_string(emitter.file, "\n");
+}
+
+func write(emitter: Emitter, content: String): void {
+    fs_write_string(emitter.file, content);
+}
+
+func writeln(emitter: Emitter, content: String): void {
+    write(emitter, content);
+    fs_write_string(emitter.file, "\n");
+}
+
+func inc_intention(emitter: Emitter): void {
+    emitter.intention = emitter.intention + 4;
+}
+
+func dec_intention(emitter: Emitter): void {
+    emitter.intention = emitter.intention - 4;
+}
+
+func emit_header(emitter: Emitter): void {
+    writeln(emitter, "#include \"gc.h\"");
+    writeln(emitter, "#include \"primitive.h\"");
+    writeln(emitter, "#include \"object.h\"");
+    writeln(emitter, "#include \"string_obj.h\"");
+    writeln(emitter, "");
+}
+
+func emit_type(emitter: Emitter, dataType: DataType): void {
+    if (string_equals(dataType.name, "Span")) {
+        if (dataType.generics == null) {
+            PANIC("Missing generic type");
+        }
+
+        emit_type(emitter, <DataType>list_get_value(dataType.generics, 0));
+        write(emitter, "*");
+        return;
+    }
+
+    write(emitter, dataType.cName);
+}
+
+func emit_variable_name(emitter: Emitter, variable: Variable): void {
+    write(emitter, variable.name);
+    fs_write_int(emitter.file, variable.id);
+}
+
+func emit_cast_expression(emitter: Emitter, castExpression: BoundCastExpression): void {
+    write(emitter, "(");
+    emit_type(emitter, RETURN_TYPE(castExpression));
+    write(emitter, ")(");
+    emit_expression(emitter, castExpression.expression);
+    write(emitter, ")");
+}
+
+func emit_null_expression(emitter: Emitter, nullExpression: BoundNullExpression): void {
+    write(emitter, "NULL");
+}
+
+func emit_paren_expression(emitter: Emitter, parenExpression: BoundParenExpression): void {
+    write(emitter, "(");
+    emit_expression(emitter, parenExpression.expression);
+    write(emitter, ")");
+}
+
+func emit_ctor_expression(emitter: Emitter, ctorExpression: BoundCtorExpression): void {
+    let returnType: DataType = RETURN_TYPE(ctorExpression);
+    
+    if (returnType.definition == null || !(returnType.definition is BoundTypeMember)) {
+        PANIC("Definition must be set");
+    }
+
+    let definition: BoundTypeMember = <BoundTypeMember>returnType.definition;
+
+    write(emitter, "OBJECT_CTOR(");
+    write(emitter, definition.name);
+    write(emitter, "_impl, ");
+    write(emitter, definition.name);
+    write(emitter, "_type");
+    write(emitter, ")");
+}
+
+func emit_assignment_expression(emitter: Emitter, assignment_expression: BoundAssignmentExpression): void {
+    emit_expression(emitter, assignment_expression.left);
+    write(emitter, " = ");
+    emit_expression(emitter, assignment_expression.right);
+}
+
+func emit_unary_expression(emitter: Emitter, unaryExpression: BoundUnaryExpression): void {
+    if (unaryExpression.operator.tokenKind == TokenKind.MINUS) {
+        write(emitter, "-");
+    } else if (unaryExpression.operator.tokenKind == TokenKind.PLUS) {
+        write(emitter, "+");
+    } else if (unaryExpression.operator.tokenKind == TokenKind.BANG) {
+        write(emitter, "!");
+    }
+
+    emit_expression(emitter, unaryExpression.right);
+}
+
+func emit_binary_expression(emitter: Emitter, binaryExpression: BoundBinaryExpression): void {
+    emit_expression(emitter, binaryExpression.left);
+    write(emitter, " ");
+
+    if (binaryExpression.operator.tokenKind == TokenKind.MINUS) {
+        write(emitter, "-");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.PLUS) {
+        write(emitter, "+");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.STAR) {
+        write(emitter, "*");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.SLASH) {
+        write(emitter, "/");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.EQUALS_EQUALS) {
+        write(emitter, "==");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.BANG_EQUALS) {
+        write(emitter, "!=");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.LANGLE) {
+        write(emitter, "<");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.LANGLE_EQUALS) {
+        write(emitter, "<=");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.RANGLE) {
+        write(emitter, ">");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.RANGLE_EQUALS) {
+        write(emitter, ">=");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.AND_AND) {
+        write(emitter, "&&");
+    } else if (binaryExpression.operator.tokenKind == TokenKind.OR_OR) {
+        write(emitter, "||");
+    }
+
+    write(emitter, " ");
+    emit_expression(emitter, binaryExpression.right);
+}
+
+func emit_call_expression(emitter: Emitter, callExpression: BoundCallExpression): void {
+    write(emitter, "(");
+    emit_expression(emitter, callExpression.callee);
+    write(emitter, ")(");
+
+    let i: i32 = 0;
+    while (i < callExpression.arguments.length) {
+        if (i > 0) {
+            write(emitter, ", ");
+        }
+
+        emit_expression(emitter, list_get_value(callExpression.arguments, i));
+        
+        i = i + 1;
+    }
+
+    write(emitter, ")");
+}
+
+func emit_member_expression(emitter: Emitter, memberExpression: BoundMemberExpression): void {
+    write(emitter, "(");
+    emit_expression(emitter, memberExpression.object);
+    write(emitter, ")->");
+    write(emitter, memberExpression.identifier);
+}
+
+func emit_is_expression(emitter: Emitter, isExpression: BoundIsExpression): void {
+    write(emitter, "OBJECT_TYPEOF(");
+    emit_expression(emitter, isExpression.left);
+    write(emitter, ") == &");
+    write(emitter, isExpression.targetType.name);
+    write(emitter, "_type");
+}
+
+func emit_enum_field_expression(emitter: Emitter, enumFieldExpression: BoundEnumFieldExpression): void {
+    write(emitter, enumFieldExpression.name);
+    write(emitter, "_");
+    write(emitter, enumFieldExpression.item);
+}
+
+func emit_integer_expression(emitter: Emitter, integerExpression: BoundIntegerExpression): void {
+    write(emitter, integerExpression.value);
+}
+
+func emit_char_expression(emitter: Emitter, charExpression: BoundCharExpression): void {
+    write(emitter, charExpression.value);
+}
+
+func emit_string_expression(emitter: Emitter, stringExpression: BoundStringExpression): void {
+    write(emitter, "STRING_CTOR(String_impl, String_type, (uchar*)");
+    write(emitter, stringExpression.value);
+    write(emitter, ", ");
+    // TODO cannot count raw value length because of escape sequences
+    fs_write_int(emitter.file, stringExpression.value.length - 2);
+    write(emitter, ")");
+}
+
+func emit_boolean_expression(emitter: Emitter, booleanExpression: BoundBooleanExpression): void {
+    if (booleanExpression.value == TokenKind.TRUE_KEYWORD) {
+        write(emitter, "1");
+        return;
+    }
+
+    write(emitter, "0");
+}
+
+func emit_variable_expression(emitter: Emitter, variableExpression: BoundVariableExpression): void {
+    write(emitter, variableExpression.variable.name);
+    fs_write_int(emitter.file, variableExpression.variable.id);
+}
+
+func emit_function_expression(emitter: Emitter, functionExpression: BoundFunctionExpression): void {
+    write(emitter, functionExpression.function.name);
+}
+
+func emit_expression(emitter: Emitter, expression: Object): void {
+    if (expression is BoundCastExpression) {
+        emit_cast_expression(emitter, <BoundCastExpression>expression);
+    } else if (expression is BoundNullExpression) {
+        emit_null_expression(emitter, <BoundNullExpression>expression);
+    } else if (expression is BoundParenExpression) {
+        emit_paren_expression(emitter, <BoundParenExpression>expression);
+    } else if (expression is BoundCtorExpression) {
+        emit_ctor_expression(emitter, <BoundCtorExpression>expression);
+    } else if (expression is BoundAssignmentExpression) {
+        emit_assignment_expression(emitter, <BoundAssignmentExpression>expression);
+    } else if (expression is BoundUnaryExpression) {
+        emit_unary_expression(emitter, <BoundUnaryExpression>expression);
+    } else if (expression is BoundBinaryExpression) {
+        emit_binary_expression(emitter, <BoundBinaryExpression>expression);
+    } else if (expression is BoundCallExpression) {
+        emit_call_expression(emitter, <BoundCallExpression>expression);
+    } else if (expression is BoundMemberExpression) {
+        emit_member_expression(emitter, <BoundMemberExpression>expression);
+    } else if (expression is BoundIsExpression) {
+        emit_is_expression(emitter, <BoundIsExpression>expression);
+    } else if (expression is BoundEnumFieldExpression) {
+        emit_enum_field_expression(emitter, <BoundEnumFieldExpression>expression);
+    } else if (expression is BoundIntegerExpression) {
+        emit_integer_expression(emitter, <BoundIntegerExpression>expression);
+    } else if (expression is BoundCharExpression) {
+        emit_char_expression(emitter, <BoundCharExpression>expression);
+    } else if (expression is BoundStringExpression) {
+        emit_string_expression(emitter, <BoundStringExpression>expression);
+    } else if (expression is BoundBooleanExpression) {
+        emit_boolean_expression(emitter, <BoundBooleanExpression>expression);
+    } else if (expression is BoundVariableExpression) {
+        emit_variable_expression(emitter, <BoundVariableExpression>expression);
+    } else if (expression is BoundFunctionExpression) {
+        emit_function_expression(emitter, <BoundFunctionExpression>expression);
+    }
+}
+
+func emit_block_statement(emitter: Emitter, blockStatement: BoundBlockStatement): void {
+    writeln_intended(emitter, "{");
+    inc_intention(emitter);
+
+    let iter: ObjectListIterator = list_iterator(blockStatement.statements);
+    while (list_iterator_has_next(iter)) {
+        emit_statement(emitter, list_iterator_next(iter));
+    }
+
+    dec_intention(emitter);
+    writeln_intended(emitter, "}");
+}
+
+func emit_if_statement(emitter: Emitter, ifStatement: BoundIfStatement): void {
+    write_intended(emitter, "if (");
+    emit_expression(emitter, ifStatement.condition);
+    writeln(emitter, ")");
+    emit_statement(emitter, ifStatement.thenCase);
+
+    if (ifStatement.elseCase != null) {
+        writeln_intended(emitter, "else");
+        emit_statement(emitter, ifStatement.elseCase);
+    }
+}
+
+func emit_while_statement(emitter: Emitter, whileStatement: BoundWhileStatement): void {
+    write_intended(emitter, "while (");
+    emit_expression(emitter, whileStatement.condition);
+    writeln(emitter, ")");
+
+    emit_statement(emitter, whileStatement.body);
+}
+
+func emit_return_statement(emitter: Emitter, returnStatement: BoundReturnStatement): void {
+    if (emitter.currentFunction == null) {
+        PANIC("Requires current function");
+    }
+    if (emitter.currentFunction.requiresGC) {
+        writeln_intended(emitter, "GC_FRAME_DESTROY;");
+    }
+
+    write_intended(emitter, "return");
+    if (returnStatement.value != null) {
+        write(emitter, " ");
+        emit_expression(emitter, returnStatement.value);
+    }
+
+    writeln(emitter, ";");
+}
+
+func emit_break_statement(emitter: Emitter, breakStatement: BoundBreakStatement): void {
+    writeln_intended(emitter, "break;");
+}
+
+func emit_continue_statement(emitter: Emitter, continueStatement: BoundContinueStatement): void {
+    writeln_intended(emitter, "continue;");
+}
+
+func emit_expression_statement(emitter: Emitter, expressionStatement: BoundExpressionStatement): void {
+    if (expressionStatement.expression is BoundEmptyExpression) {
+        return;
+    }
+
+    write_intended(emitter, "");
+    emit_expression(emitter, expressionStatement.expression);
+    writeln(emitter, ";");
+}
+
+func emit_statement(emitter: Emitter, statement: Object): void {
+    if (statement is BoundBlockStatement) {
+        emit_block_statement(emitter, <BoundBlockStatement>statement);
+    } else if (statement is BoundIfStatement) {
+        emit_if_statement(emitter, <BoundIfStatement>statement);
+    } else if (statement is BoundWhileStatement) {
+        emit_while_statement(emitter, <BoundWhileStatement>statement);
+    } else if (statement is BoundReturnStatement) {
+        emit_return_statement(emitter, <BoundReturnStatement>statement);
+    } else if (statement is BoundBreakStatement) {
+        emit_break_statement(emitter, <BoundBreakStatement>statement);
+    } else if (statement is BoundContinueStatement) {
+        emit_continue_statement(emitter, <BoundContinueStatement>statement);
+    } else if (statement is BoundExpressionStatement) {
+        emit_expression_statement(emitter, <BoundExpressionStatement>statement);
+    }
+}
+
+func emit_track_func_type(emitter: Emitter, dataType: DataType): void {
+    if (dataType.generics == null) {
+        PANIC("Func type must have generic parameters");
+    }
+
+    write_intended(emitter, "typedef ");
+    emit_type(emitter, <DataType>list_get_value(dataType.generics, 0));
+    write(emitter, "(");
+    write(emitter, dataType.cName);
+    write(emitter, ")(");
+
+    let i: i32 = 1;
+    while (i < dataType.generics.length) {
+        if (i > 1) {
+            write(emitter, ", ");
+        }
+
+        emit_type(emitter, <DataType>list_get_value(dataType.generics, i));
+        i = i + 1;
+    }
+
+    writeln(emitter, ");");
+}
+
+
+func emit_enum_member(emitter: Emitter, enumMember: BoundEnumMember): void {
+    writeln_intended(emitter, "typedef enum");
+    writeln_intended(emitter, "{");
+    inc_intention(emitter);
+
+    let iter: ObjectListIterator = list_iterator(enumMember.items);
+    while (list_iterator_has_next(iter)) {
+        let item: BoundEnumMemberItem = <BoundEnumMemberItem>list_iterator_next(iter);
+        write_intended(emitter, enumMember.name);
+        write(emitter, "_");
+        write(emitter, item.name);
+        writeln(emitter, ",");
+    }
+
+    dec_intention(emitter);
+    write(emitter, "} ");
+    write(emitter, enumMember.name);
+    writeln(emitter, ";");
+}
+
+func emit_type_member_header(emitter: Emitter, typeMember: BoundTypeMember): void {
+    write_intended(emitter, "typedef struct ");
+    write(emitter, typeMember.name);
+    write(emitter, "_impl* ");
+    write(emitter, typeMember.name);
+    writeln(emitter, ";");
+}
+
+func emit_type_member(emitter: Emitter, typeMember: BoundTypeMember): void {
+    write_intended(emitter, "struct ");
+    write(emitter, typeMember.name);
+    writeln(emitter, "_impl");
+    writeln_intended(emitter, "{");
+
+    inc_intention(emitter);
+
+    writeln_intended(emitter, "ObjectType* __type_header__;");
+
+    let iter: ObjectListIterator = list_iterator(typeMember.items);
+    while (list_iterator_has_next(iter)) {
+        let item: BoundTypeMemberItem = <BoundTypeMemberItem>list_iterator_next(iter);
+        write_intended(emitter, "");
+        emit_type(emitter, item.dataType);
+        write(emitter, " ");
+        write(emitter, item.name);
+        writeln(emitter, ";");
+    }
+
+    dec_intention(emitter);
+    writeln_intended(emitter, "};");
+}
+
+func emit_type_member_trace(emitter: Emitter, typeMember: BoundTypeMember): void {
+    write_intended(emitter, "static void ");
+    write(emitter, typeMember.meta.traceName);
+    writeln(emitter, "(const void* _obj, gc_mark_fn mark)");
+    writeln_intended(emitter, "{");
+
+    inc_intention(emitter);
+    write_intended(emitter, "const ");
+    write(emitter, typeMember.name);
+    write(emitter, " obj = (");
+    write(emitter, typeMember.name);
+    writeln(emitter, ")_obj;");
+
+    let iter: ObjectListIterator = list_iterator(typeMember.items);
+    while (list_iterator_has_next(iter)) {
+        let item: BoundTypeMemberItem = <BoundTypeMemberItem>list_iterator_next(iter);
+        if (item.dataType.kind != DataTypeKind.OBJECT) {
+            continue;
+        }
+
+        write_intended(emitter, "mark(obj->");
+        write(emitter, item.name);
+        writeln(emitter, ");");
+    }
+    dec_intention(emitter);
+
+    writeln_intended(emitter, "}");
+}
+
+func emit_type_member_type(emitter: Emitter, typeMember: BoundTypeMember): void {
+    write_intended(emitter, "ObjectType ");
+    write(emitter, typeMember.name);
+    writeln(emitter, "_type = {");
+
+    inc_intention(emitter);
+    write_intended(emitter, ".trace = ");
+    writeln(emitter, typeMember.meta.traceName);
+
+    dec_intention(emitter);
+
+    writeln_intended(emitter, "};");
+}
+
+func emit_extern_type_member_type(emitter: Emitter, typeMember: BoundTypeMember): void {
+    write_intended(emitter, "extern ObjectType ");
+    write(emitter, typeMember.name);
+    writeln(emitter, "_type;");
+}
+
+func emit_extern_function_member(emitter: Emitter, functionMember: BoundFunctionMember): void {
+    write_intended(emitter, "extern ");
+    emit_function_member_header(emitter, functionMember);
+}
+
+func emit_function_member_header(emitter: Emitter, functionMember: BoundFunctionMember): void {
+    emit_type(emitter, functionMember.returnType);
+    write(emitter, " ");
+    write(emitter, functionMember.name);
+    write(emitter, "(");
+
+    let i: i32 = 0;
+    while (i < functionMember.parameters.length) {
+        if (i > 0) {
+            write(emitter, ", ");
+        }
+        let parameter: Variable = <Variable>list_get_value(functionMember.parameters, i);
+        emit_type(emitter, parameter.dataType);
+        write(emitter, " ");
+        emit_variable_name(emitter, parameter);
+
+        i = i + 1;
+    }
+
+    writeln(emitter, ");");
+}
+
+func emit_function_member(emitter: Emitter, functionMember: BoundFunctionMember): void {
+    emitter.currentFunction = functionMember;
+
+    write_intended(emitter, "");
+    emit_type(emitter, functionMember.returnType);
+    write(emitter, " ");
+    write(emitter, functionMember.name);
+    write(emitter, "(");
+
+    let gcObjects: i32 = 0;
+
+    let i: i32 = 0;
+    while (i < functionMember.parameters.length) {
+        if (i > 0) {
+            write(emitter, ", ");
+        }
+        let parameter: Variable = <Variable>list_get_value(functionMember.parameters, i);
+
+        if (parameter.dataType.kind == DataTypeKind.OBJECT) {
+            gcObjects = gcObjects + 1;
+        }
+
+        emit_type(emitter, parameter.dataType);
+        write(emitter, " ");
+        emit_variable_name(emitter, parameter);
+
+        i = i + 1;
+    }
+
+    writeln(emitter, ")");
+    writeln_intended(emitter, "{");
+    inc_intention(emitter);
+
+    let iter: ObjectListIterator = list_iterator(functionMember.variables);
+    while (list_iterator_has_next(iter)) {
+        let variable: Variable = <Variable>list_iterator_next(iter);
+        write_intended(emitter, "");
+        emit_type(emitter, variable.dataType);
+        write(emitter, " ");
+        emit_variable_name(emitter, variable);
+
+        if (variable.dataType.kind == DataTypeKind.OBJECT) {
+            gcObjects = gcObjects + 1;
+            write(emitter, " = NULL");
+        }
+
+        writeln(emitter, ";");
+    }
+
+    if (gcObjects > 0) {
+        write_intended(emitter, "GC_FRAME_INIT(");
+        fs_write_int(emitter.file, gcObjects);
+
+        let piter: ObjectListIterator = list_iterator(functionMember.parameters);
+        while (list_iterator_has_next(piter)) {
+            let parameter: Variable = <Variable>list_iterator_next(piter);
+            if (parameter.dataType.kind != DataTypeKind.OBJECT) {
+                continue;
+            }
+
+            write(emitter, ", GC_LOCAL(");
+            emit_variable_name(emitter, parameter);
+            write(emitter, ")");
+        }
+
+        let viter: ObjectListIterator = list_iterator(functionMember.variables);
+        while (list_iterator_has_next(viter)) {
+            let variable: Variable = <Variable>list_iterator_next(viter);
+            if (variable.dataType.kind != DataTypeKind.OBJECT) {
+                continue;
+            }
+
+            write(emitter, ", GC_LOCAL(");
+            emit_variable_name(emitter, variable);
+            write(emitter, ")");
+        }
+
+        writeln(emitter, ");");
+    }
+
+    emit_block_statement(emitter, <BoundBlockStatement>functionMember.body);
+
+    if (gcObjects > 0) {
+        writeln_intended(emitter, "GC_FRAME_DESTROY;");
+    }
+
+    dec_intention(emitter);
+    writeln_intended(emitter, "}");
+    writeln(emitter, "");
+}
+
+func emit_program(emitter: Emitter, program: BoundProgram): void {
+    emit_header(emitter);
+
+    // Emit enum
+    let enumIter: ObjectListIterator = list_iterator(program.enums);
+    while (list_iterator_has_next(enumIter)) {
+        emit_enum_member(emitter, <BoundEnumMember>list_iterator_next(enumIter));
+    }
+
+    // Emit type header
+    let typeHeaderIter: ObjectListIterator = list_iterator(program.types);
+    while (list_iterator_has_next(typeHeaderIter)) {
+        emit_type_member_header(emitter, <BoundTypeMember>list_iterator_next(typeHeaderIter));
+    }
+
+    // Emit extern type header
+    let externTypeHeaderIter: ObjectListIterator = list_iterator(program.externTypes);
+    while (list_iterator_has_next(externTypeHeaderIter)) {
+        emit_type_member_header(emitter, <BoundTypeMember>list_iterator_next(externTypeHeaderIter));
+    }
+
+    writeln(emitter, "");
+
+    // Emit dynamic Func types
+    let trackedTypeIter: ObjectListIterator = list_iterator(program.trackedTypes);
+    while (list_iterator_has_next(trackedTypeIter)) {
+        let dataType: DataType = <DataType>list_iterator_next(trackedTypeIter);
+        if (string_equals(dataType.name, "Func")) {
+            emit_track_func_type(emitter, dataType);
+        }
+    }
+
+    writeln(emitter, "");
+
+    // Emit type
+    let typeIter: ObjectListIterator = list_iterator(program.types);
+    while (list_iterator_has_next(typeIter)) {
+        let typeMember: BoundTypeMember = <BoundTypeMember>list_iterator_next(typeIter);
+        emit_type_member(emitter, typeMember);
+        writeln(emitter, "");
+
+        if (typeMember.meta.generateTrace) {
+            emit_type_member_trace(emitter, typeMember);
+            writeln(emitter, "");
+        }
+
+        emit_type_member_type(emitter, typeMember);
+    }
+
+    // Emit extern type
+    let externTypeIter: ObjectListIterator = list_iterator(program.externTypes);
+    while (list_iterator_has_next(externTypeIter)) {
+        let typeMember: BoundTypeMember = <BoundTypeMember>list_iterator_next(externTypeIter);
+        emit_type_member(emitter, typeMember);
+        emit_extern_type_member_type(emitter, typeMember);
+        writeln(emitter, "");
+    }
+
+    writeln(emitter, "");
+    writeln(emitter, "");
+
+    // Emit extern function signatures
+    let externFuncIter: ObjectListIterator = list_iterator(program.externFunctions);
+    while (list_iterator_has_next(externFuncIter)) {
+        emit_extern_function_member(emitter, <BoundFunctionMember>list_iterator_next(externFuncIter));
+    }
+
+    writeln(emitter, "");
+
+    // Emit function signatures
+    let funcHeaderIter: ObjectListIterator = list_iterator(program.functions);
+    while (list_iterator_has_next(funcHeaderIter)) {
+        emit_function_member_header(emitter, <BoundFunctionMember>list_iterator_next(funcHeaderIter));
+    }
+
+    writeln(emitter, "");
+
+    // Emit functions
+    let funcIter: ObjectListIterator = list_iterator(program.functions);
+    while (list_iterator_has_next(funcIter)) {
+        emit_function_member(emitter, <BoundFunctionMember>list_iterator_next(funcIter));
+    }
+}

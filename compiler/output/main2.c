@@ -2058,7 +2058,7 @@ void list_push(ObjectList list0, Object value0)
         (item1)->next = NULL;
         (item1)->prev = NULL;
         (list0)->length = (list0)->length + 1;
-        if (((Object)((list0)->first)) == ((Object)(NULL)) && ((Object)((list0)->last)) == ((Object)(NULL)))
+        if (((Object)((list0)->first)) == ((Object)((list0)->first)) && ((Object)((list0)->last)) == ((Object)((list0)->last)))
         {
             (list0)->first = item1;
             (list0)->last = item1;
@@ -2082,7 +2082,7 @@ void list_unshift(ObjectList list0, Object value0)
         (item1)->next = NULL;
         (item1)->prev = NULL;
         (list0)->length = (list0)->length + 1;
-        if (((Object)((list0)->first)) == ((Object)(NULL)) && ((Object)((list0)->last)) == ((Object)(NULL)))
+        if (((Object)((list0)->first)) == ((Object)((list0)->first)) && ((Object)((list0)->last)) == ((Object)((list0)->last)))
         {
             (list0)->first = item1;
             (list0)->last = item1;
@@ -2101,7 +2101,7 @@ Object list_pop(ObjectList list0)
     Object value1 = NULL;
     GC_FRAME_INIT(2, GC_LOCAL(list0), GC_LOCAL(value1));
     {
-        if (((Object)((list0)->last)) == ((Object)(NULL)))
+        if (((Object)((list0)->last)) == ((Object)((list0)->last)))
         {
             GC_FRAME_DESTROY;
             return NULL;
@@ -2121,7 +2121,7 @@ Object list_shift(ObjectList list0)
     Object value1 = NULL;
     GC_FRAME_INIT(2, GC_LOCAL(list0), GC_LOCAL(value1));
     {
-        if (((Object)((list0)->first)) == ((Object)(NULL)))
+        if (((Object)((list0)->first)) == ((Object)((list0)->first)))
         {
             GC_FRAME_DESTROY;
             return NULL;
@@ -2238,7 +2238,7 @@ Object list_iterator_next(ObjectListIterator iterator0)
     GC_FRAME_INIT(2, GC_LOCAL(iterator0), GC_LOCAL(value1));
     {
         value1 = NULL;
-        if (((Object)((iterator0)->current)) != ((Object)(NULL)))
+        if (((Object)((iterator0)->current)) != ((Object)((iterator0)->current)))
         {
             value1 = ((iterator0)->current)->value;
             (iterator0)->current = ((iterator0)->current)->next;
@@ -4102,28 +4102,28 @@ ObjectList conversion_classify(Binder binder0, DataType from0, DataType to0, boo
             GC_FRAME_DESTROY;
             return (list_init)();
         }
-        if ((from0)->definition != NULL && OBJECT_TYPEOF((from0)->definition) == &BoundTypeMember_type && (type_eq_type)(to0, (binder0)->objectType))
+        if ((from0)->definition != (from0)->definition && OBJECT_TYPEOF((from0)->definition) == &BoundTypeMember_type && (type_eq_type)(to0, (binder0)->objectType))
         {
             list1 = (list_init)();
             (list_push)(list1, ((Object)((rule_init)(from0, to0, ConversionKind_IMPLICIT))));
             GC_FRAME_DESTROY;
             return list1;
         }
-        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != NULL && OBJECT_TYPEOF((to0)->definition) == &BoundTypeMember_type)
+        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != (to0)->definition && OBJECT_TYPEOF((to0)->definition) == &BoundTypeMember_type)
         {
             list2 = (list_init)();
             (list_push)(list2, ((Object)((rule_init)(from0, to0, ConversionKind_EXPLICIT))));
             GC_FRAME_DESTROY;
             return list2;
         }
-        if ((from0)->definition != NULL && OBJECT_TYPEOF((from0)->definition) == &BoundEnumMember_type && (type_eq_type)(to0, (binder0)->i32Type))
+        if ((from0)->definition != (from0)->definition && OBJECT_TYPEOF((from0)->definition) == &BoundEnumMember_type && (type_eq_type)(to0, (binder0)->i32Type))
         {
             list3 = (list_init)();
             (list_push)(list3, ((Object)((rule_init)(from0, to0, ConversionKind_IMPLICIT))));
             GC_FRAME_DESTROY;
             return list3;
         }
-        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != NULL && OBJECT_TYPEOF((to0)->definition) == &BoundEnumMember_type)
+        if (explicit0 && (type_eq_type)(from0, (binder0)->objectType) && (to0)->definition != (to0)->definition && OBJECT_TYPEOF((to0)->definition) == &BoundEnumMember_type)
         {
             list4 = (list_init)();
             (list_push)(list4, ((Object)((rule_init)(from0, to0, ConversionKind_EXPLICIT))));
@@ -4246,7 +4246,7 @@ DataType scope_lookup_type(Scope scope0, String name0, ObjectList generics0)
                 return dataType2;
             }
         }
-        if (((Object)((scope0)->parent)) != ((Object)(NULL)))
+        if (((Object)((scope0)->parent)) != ((Object)((scope0)->parent)))
         {
             GC_FRAME_DESTROY;
             return (scope_lookup_type)((scope0)->parent, name0, generics0);
@@ -4283,7 +4283,7 @@ Variable scope_lookup_variable(Scope scope0, String name0)
                 return variable2;
             }
         }
-        if (((Object)((scope0)->parent)) != ((Object)(NULL)))
+        if (((Object)((scope0)->parent)) != ((Object)((scope0)->parent)))
         {
             GC_FRAME_DESTROY;
             return (scope_lookup_variable)((scope0)->parent, name0);
@@ -4320,7 +4320,7 @@ BoundFunctionMember scope_lookup_function(Scope scope0, String name0)
                 return function2;
             }
         }
-        if (((Object)((scope0)->parent)) != ((Object)(NULL)))
+        if (((Object)((scope0)->parent)) != ((Object)((scope0)->parent)))
         {
             GC_FRAME_DESTROY;
             return (scope_lookup_function)((scope0)->parent, name0);
@@ -4394,12 +4394,12 @@ bool type_eq_type(DataType left0, DataType right0)
             GC_FRAME_DESTROY;
             return 0;
         }
-        if (((Object)((left0)->generics)) == ((Object)(NULL)) && ((Object)((right0)->generics)) != ((Object)(NULL)) || ((Object)((left0)->generics)) != ((Object)(NULL)) && ((Object)((right0)->generics)) == ((Object)(NULL)))
+        if (((Object)((left0)->generics)) == ((Object)((left0)->generics)) && ((Object)((right0)->generics)) != ((Object)((right0)->generics)) || ((Object)((left0)->generics)) != ((Object)((left0)->generics)) && ((Object)((right0)->generics)) == ((Object)((right0)->generics)))
         {
             GC_FRAME_DESTROY;
             return 0;
         }
-        if (((Object)((left0)->generics)) == ((Object)(NULL)) && ((Object)((right0)->generics)) == ((Object)(NULL)))
+        if (((Object)((left0)->generics)) == ((Object)((left0)->generics)) && ((Object)((right0)->generics)) == ((Object)((right0)->generics)))
         {
             GC_FRAME_DESTROY;
             return 1;
@@ -4439,12 +4439,12 @@ bool type_eq_def(DataType left0, String name0, ObjectList generics0)
             GC_FRAME_DESTROY;
             return 0;
         }
-        if (((Object)((left0)->generics)) == ((Object)(NULL)) && ((Object)(generics0)) != ((Object)(NULL)) || ((Object)((left0)->generics)) != ((Object)(NULL)) && ((Object)(generics0)) == ((Object)(NULL)))
+        if (((Object)((left0)->generics)) == ((Object)((left0)->generics)) && ((Object)(generics0)) != ((Object)(generics0)) || ((Object)((left0)->generics)) != ((Object)((left0)->generics)) && ((Object)(generics0)) == ((Object)(generics0)))
         {
             GC_FRAME_DESTROY;
             return 0;
         }
-        if (((Object)((left0)->generics)) == ((Object)(NULL)) && ((Object)(generics0)) == ((Object)(NULL)))
+        if (((Object)((left0)->generics)) == ((Object)((left0)->generics)) && ((Object)(generics0)) == ((Object)(generics0)))
         {
             GC_FRAME_DESTROY;
             return 1;
@@ -4739,7 +4739,7 @@ DataType bind_type_signature_dynamic_func(Binder binder0, TypeSignatureDynamic d
             (list_push)(generics1, ((Object)((bind_type_signature)(binder0, (generic3)->typeSignature, i2 == 0))));
         }
         dataType4 = (scope_lookup_type)((binder0)->currentScope, STRING_CTOR(String_impl, String_type, (uchar*)"Func", 4), generics1);
-        if (((Object)(dataType4)) == ((Object)(NULL)))
+        if (((Object)(dataType4)) == ((Object)(dataType4)))
         {
             cName5 = (generate_func_cName)(generics1);
             dataType4 = (type_init_dynamic)(DataTypeKind_PRIMITIVE, STRING_CTOR(String_impl, String_type, (uchar*)"Func", 4), cName5, generics1);
@@ -4768,7 +4768,7 @@ DataType bind_type_signature_dynamic_span(Binder binder0, TypeSignatureDynamic d
         generics2 = (list_init)();
         (list_push)(generics2, ((Object)(generic1)));
         dataType3 = (scope_lookup_type)((binder0)->currentScope, STRING_CTOR(String_impl, String_type, (uchar*)"Span", 4), generics2);
-        if (((Object)(dataType3)) == ((Object)(NULL)))
+        if (((Object)(dataType3)) == ((Object)(dataType3)))
         {
             cName4 = (string_concat)(STRING_CTOR(String_impl, String_type, (uchar*)"Span_", 5), (generic1)->cName);
             dataType3 = (type_init_dynamic)(DataTypeKind_OBJECT, STRING_CTOR(String_impl, String_type, (uchar*)"Span", 4), cName4, generics2);
@@ -4806,7 +4806,7 @@ DataType bind_type_signature(Binder binder0, TypeSignature signature0, bool allo
     DataType dataType1 = NULL;
     GC_FRAME_INIT(3, GC_LOCAL(binder0), GC_LOCAL(signature0), GC_LOCAL(dataType1));
     {
-        if (((Object)((signature0)->dynamic)) != ((Object)(NULL)))
+        if (((Object)((signature0)->dynamic)) != ((Object)((signature0)->dynamic)))
         {
             GC_FRAME_DESTROY;
             return (bind_type_signature_dynamic)(binder0, signature0, (signature0)->dynamic);
@@ -4817,7 +4817,7 @@ DataType bind_type_signature(Binder binder0, TypeSignature signature0, bool allo
             return (binder0)->voidType;
         }
         dataType1 = (scope_lookup_type)((binder0)->currentScope, ((signature0)->identifier)->value, NULL);
-        if (((Object)(dataType1)) == ((Object)(NULL)))
+        if (((Object)(dataType1)) == ((Object)(dataType1)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Unkown type", 11));
         }
@@ -4931,7 +4931,7 @@ BoundUnaryExpression bind_unary_expression(Binder binder0, UnaryExpression unary
     {
         right1 = (bind_expression)(binder0, (unaryExpression0)->right, NULL);
         operator2 = (lookup_unary_operator)(binder0, ((unaryExpression0)->operator)->kind, (RETURN_TYPE)(right1));
-        if (((Object)(operator2)) != ((Object)(NULL)))
+        if (((Object)(operator2)) != ((Object)(operator2)))
         {
             node3 = OBJECT_CTOR(BoundUnaryExpression_impl, BoundUnaryExpression_type);
             (node3)->returnType = (operator2)->returnType;
@@ -4945,7 +4945,7 @@ BoundUnaryExpression bind_unary_expression(Binder binder0, UnaryExpression unary
         {
             operator5 = ((BoundUnaryOperator)((list_iterator_next)(iter4)));
             rightConversion6 = (conversion_classify)(binder0, (RETURN_TYPE)(right1), (operator5)->right, 0);
-            if (((Object)(rightConversion6)) != ((Object)(NULL)))
+            if (((Object)(rightConversion6)) != ((Object)(rightConversion6)))
             {
                 right1 = (bind_conversion)(right1, rightConversion6);
                 node7 = OBJECT_CTOR(BoundUnaryExpression_impl, BoundUnaryExpression_type);
@@ -5015,7 +5015,7 @@ BoundBinaryExpression bind_binary_expression(Binder binder0, BinaryExpression bi
             }
         }
         operator3 = (lookup_binary_operator)(binder0, ((binaryExpression0)->operator)->kind, (RETURN_TYPE)(left1), (RETURN_TYPE)(right2));
-        if (((Object)(operator3)) != ((Object)(NULL)))
+        if (((Object)(operator3)) != ((Object)(operator3)))
         {
             node4 = OBJECT_CTOR(BoundBinaryExpression_impl, BoundBinaryExpression_type);
             (node4)->returnType = (operator3)->returnType;
@@ -5035,7 +5035,7 @@ BoundBinaryExpression bind_binary_expression(Binder binder0, BinaryExpression bi
             }
             leftConversion7 = (conversion_classify)(binder0, (RETURN_TYPE)(left1), (operator6)->left, 0);
             rightConversion8 = (conversion_classify)(binder0, (RETURN_TYPE)(right2), (operator6)->right, 0);
-            if (((Object)(leftConversion7)) != ((Object)(NULL)) && ((Object)(rightConversion8)) != ((Object)(NULL)))
+            if (((Object)(leftConversion7)) != ((Object)(leftConversion7)) && ((Object)(rightConversion8)) != ((Object)(rightConversion8)))
             {
                 left1 = (bind_conversion)(left1, leftConversion7);
                 right2 = (bind_conversion)(right2, leftConversion7);
@@ -5070,7 +5070,7 @@ BoundCallExpression bind_call_expression(Binder binder0, CallExpression callExpr
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Expression is not callable", 26));
         }
-        if (((Object)((calleeReturnType2)->generics)) == ((Object)(NULL)))
+        if (((Object)((calleeReturnType2)->generics)) == ((Object)((calleeReturnType2)->generics)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Function requires generics", 26));
         }
@@ -5118,7 +5118,7 @@ Object bind_member_expression(Binder binder0, MemberExpression memberExpression0
         object2 = (bind_expression)(binder0, (memberExpression0)->object, NULL);
         ((binder0)->flags)->allowEnumIdentifiers = oldEnumIdentifier1;
         objectReturnType3 = (RETURN_TYPE)(object2);
-        if ((objectReturnType3)->definition == NULL)
+        if ((objectReturnType3)->definition == (objectReturnType3)->definition)
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Cannot access this expression", 29));
         }
@@ -5222,7 +5222,7 @@ Object bind_literal_expression(Binder binder0, LiteralExpression literalExpressi
         if (((i32)(((literalExpression0)->value)->kind)) == ((i32)(TokenKind_STRING_LITERAL)))
         {
             stringType3 = (scope_lookup_type)((binder0)->currentScope, STRING_CTOR(String_impl, String_type, (uchar*)"String", 6), NULL);
-            if (((Object)(stringType3)) == ((Object)(NULL)))
+            if (((Object)(stringType3)) == ((Object)(stringType3)))
             {
                 (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Cannot find string type", 23));
             }
@@ -5269,7 +5269,7 @@ Object bind_identifier_expression(Binder binder0, LiteralExpression literalExpre
     {
         {
             variable1 = (scope_lookup_variable)((binder0)->currentScope, ((literalExpression0)->value)->value);
-            if (((Object)(variable1)) != ((Object)(NULL)))
+            if (((Object)(variable1)) != ((Object)(variable1)))
             {
                 node2 = OBJECT_CTOR(BoundVariableExpression_impl, BoundVariableExpression_type);
                 (node2)->returnType = (variable1)->dataType;
@@ -5280,7 +5280,7 @@ Object bind_identifier_expression(Binder binder0, LiteralExpression literalExpre
         }
         {
             function3 = (scope_lookup_function)((binder0)->currentScope, ((literalExpression0)->value)->value);
-            if (((Object)(function3)) != ((Object)(NULL)))
+            if (((Object)(function3)) != ((Object)(function3)))
             {
                 node4 = OBJECT_CTOR(BoundFunctionExpression_impl, BoundFunctionExpression_type);
                 (node4)->returnType = (function3)->functionSignature;
@@ -5292,7 +5292,7 @@ Object bind_identifier_expression(Binder binder0, LiteralExpression literalExpre
         if (((binder0)->flags)->allowEnumIdentifiers)
         {
             dataType5 = (scope_lookup_type)((binder0)->currentScope, ((literalExpression0)->value)->value, NULL);
-            if (((Object)(dataType5)) != ((Object)(NULL)) && (dataType5)->definition != NULL && OBJECT_TYPEOF((dataType5)->definition) == &BoundEnumMember_type)
+            if (((Object)(dataType5)) != ((Object)(dataType5)) && (dataType5)->definition != (dataType5)->definition && OBJECT_TYPEOF((dataType5)->definition) == &BoundEnumMember_type)
             {
                 node6 = OBJECT_CTOR(BoundEnumExpression_impl, BoundEnumExpression_type);
                 (node6)->returnType = dataType5;
@@ -5332,7 +5332,7 @@ Object bind_cast_expression(Binder binder0, CastExpression castExpression0)
         targetType1 = (bind_type_signature)(binder0, (castExpression0)->typeSignature, 0);
         expression2 = (bind_expression)(binder0, (castExpression0)->expression, NULL);
         conversions3 = (conversion_classify)(binder0, (RETURN_TYPE)(expression2), targetType1, 1);
-        if (((Object)(conversions3)) == ((Object)(NULL)))
+        if (((Object)(conversions3)) == ((Object)(conversions3)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Expression is not castable", 26));
         }
@@ -5439,7 +5439,7 @@ Object bind_expression(Binder binder0, Object expression0, DataType expectedType
         boundExpression1 = (bind_expression_internal)(binder0, expression0);
         if (OBJECT_TYPEOF(boundExpression1) == &BoundNullExpression_type)
         {
-            if (((Object)(expectedType0)) == ((Object)(NULL)))
+            if (((Object)(expectedType0)) == ((Object)(expectedType0)))
             {
                 GC_FRAME_DESTROY;
                 return boundExpression1;
@@ -5450,10 +5450,10 @@ Object bind_expression(Binder binder0, Object expression0, DataType expectedType
             }
             (SET_RETURN_TYPE)(boundExpression1, expectedType0);
         }
-        if (((Object)(expectedType0)) != ((Object)(NULL)) && !(type_eq_type)((RETURN_TYPE)(boundExpression1), expectedType0))
+        if (((Object)(expectedType0)) != ((Object)(expectedType0)) && !(type_eq_type)((RETURN_TYPE)(boundExpression1), expectedType0))
         {
             conversions2 = (conversion_classify)(binder0, (RETURN_TYPE)(boundExpression1), expectedType0, 0);
-            if (((Object)(conversions2)) == ((Object)(NULL)) || (conversions2)->length == 0)
+            if (((Object)(conversions2)) == ((Object)(conversions2)) || (conversions2)->length == 0)
             {
                 (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Not compatible expression", 25));
             }
@@ -5502,7 +5502,7 @@ Object bind_variable_statement(Binder binder0, VariableStatement variableStateme
     BoundExpressionStatement node7 = NULL;
     GC_FRAME_INIT(9, GC_LOCAL(binder0), GC_LOCAL(variableStatement0), GC_LOCAL(dataType1), GC_LOCAL(variable2), GC_LOCAL(initializer3), GC_LOCAL(right4), GC_LOCAL(variableExpression5), GC_LOCAL(assignmentExpression6), GC_LOCAL(node7));
     {
-        if (((Object)((binder0)->currentFunction)) == ((Object)(NULL)))
+        if (((Object)((binder0)->currentFunction)) == ((Object)((binder0)->currentFunction)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Missing current function context", 32));
         }
@@ -5510,7 +5510,7 @@ Object bind_variable_statement(Binder binder0, VariableStatement variableStateme
         variable2 = (variable_init)((binder0)->currentFunction, VariableKind_LOCAL, ((variableStatement0)->identifier)->value, dataType1);
         (scope_declare_variable)((binder0)->currentScope, variable2);
         initializer3 = NULL;
-        if ((variableStatement0)->initializer != NULL)
+        if ((variableStatement0)->initializer != (variableStatement0)->initializer)
         {
             right4 = (bind_expression)(binder0, (variableStatement0)->initializer, dataType1);
             variableExpression5 = OBJECT_CTOR(BoundVariableExpression_impl, BoundVariableExpression_type);
@@ -5545,7 +5545,7 @@ BoundIfStatement bind_if_statement(Binder binder0, IfStatement ifStatement0)
         condition1 = (bind_expression)(binder0, (ifStatement0)->condition, (binder0)->boolType);
         thenCase2 = (bind_statement)(binder0, (ifStatement0)->thenCase);
         elseCase3 = NULL;
-        if (((Object)((ifStatement0)->elseCase)) != ((Object)(NULL)))
+        if (((Object)((ifStatement0)->elseCase)) != ((Object)((ifStatement0)->elseCase)))
         {
             elseCase3 = (bind_statement)(binder0, ((ifStatement0)->elseCase)->thenCase);
         }
@@ -5591,20 +5591,20 @@ BoundReturnStatement bind_return_statement(Binder binder0, ReturnStatement retur
     BoundReturnStatement node2 = NULL;
     GC_FRAME_INIT(4, GC_LOCAL(binder0), GC_LOCAL(returnStatement0), GC_LOCAL(value1), GC_LOCAL(node2));
     {
-        if (((Object)((binder0)->currentFunction)) == ((Object)(NULL)))
+        if (((Object)((binder0)->currentFunction)) == ((Object)((binder0)->currentFunction)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Missing current function context", 32));
         }
-        if ((type_eq_type)(((binder0)->currentFunction)->returnType, (binder0)->voidType) && (returnStatement0)->value != NULL)
+        if ((type_eq_type)(((binder0)->currentFunction)->returnType, (binder0)->voidType) && (returnStatement0)->value != (returnStatement0)->value)
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Cannot return value from void function", 38));
         }
-        if (!(type_eq_type)(((binder0)->currentFunction)->returnType, (binder0)->voidType) && (returnStatement0)->value == NULL)
+        if (!(type_eq_type)(((binder0)->currentFunction)->returnType, (binder0)->voidType) && (returnStatement0)->value == (returnStatement0)->value)
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Must return value from non-void function", 40));
         }
         value1 = NULL;
-        if ((returnStatement0)->value != NULL)
+        if ((returnStatement0)->value != (returnStatement0)->value)
         {
             value1 = (bind_expression)(binder0, (returnStatement0)->value, ((binder0)->currentFunction)->returnType);
         }
@@ -5807,7 +5807,7 @@ BoundTypeMember bind_type_member(Binder binder0, TypeMember typeMember0)
     GC_FRAME_INIT(8, GC_LOCAL(binder0), GC_LOCAL(typeMember0), GC_LOCAL(dataType1), GC_LOCAL(definition2), GC_LOCAL(iter3), GC_LOCAL(item4), GC_LOCAL(dataType5), GC_LOCAL(node6));
     {
         dataType1 = (scope_lookup_type)((binder0)->currentScope, ((typeMember0)->identifier)->value, NULL);
-        if ((dataType1)->definition == NULL || !(OBJECT_TYPEOF((dataType1)->definition) == &BoundTypeMember_type))
+        if ((dataType1)->definition == (dataType1)->definition || !(OBJECT_TYPEOF((dataType1)->definition) == &BoundTypeMember_type))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Cannot find Type", 16));
         }
@@ -5942,7 +5942,7 @@ BoundFunctionMember bind_function_member(Binder binder0, FunctionMember function
     GC_FRAME_INIT(5, GC_LOCAL(binder0), GC_LOCAL(functionMember0), GC_LOCAL(function1), GC_LOCAL(iter2), GC_LOCAL(parameter3));
     {
         function1 = (scope_lookup_function)((binder0)->currentScope, ((functionMember0)->identifier)->value);
-        if (((Object)(function1)) == ((Object)(NULL)))
+        if (((Object)(function1)) == ((Object)(function1)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Cannot find function", 20));
         }
@@ -6206,7 +6206,7 @@ void emit_type(Emitter emitter0, DataType dataType0)
     {
         if ((string_equals)((dataType0)->name, STRING_CTOR(String_impl, String_type, (uchar*)"Span", 4)))
         {
-            if (((Object)((dataType0)->generics)) == ((Object)(NULL)))
+            if (((Object)((dataType0)->generics)) == ((Object)((dataType0)->generics)))
             {
                 (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Missing generic type", 20));
             }
@@ -6270,7 +6270,7 @@ void emit_ctor_expression(Emitter emitter0, BoundCtorExpression ctorExpression0)
     GC_FRAME_INIT(4, GC_LOCAL(emitter0), GC_LOCAL(ctorExpression0), GC_LOCAL(returnType1), GC_LOCAL(definition2));
     {
         returnType1 = (RETURN_TYPE)(((Object)(ctorExpression0)));
-        if ((returnType1)->definition == NULL || !(OBJECT_TYPEOF((returnType1)->definition) == &BoundTypeMember_type))
+        if ((returnType1)->definition == (returnType1)->definition || !(OBJECT_TYPEOF((returnType1)->definition) == &BoundTypeMember_type))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Definition must be set", 22));
         }
@@ -6632,7 +6632,7 @@ void emit_if_statement(Emitter emitter0, BoundIfStatement ifStatement0)
         (emit_expression)(emitter0, (ifStatement0)->condition);
         (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)")", 1));
         (emit_statement)(emitter0, (ifStatement0)->thenCase);
-        if ((ifStatement0)->elseCase != NULL)
+        if ((ifStatement0)->elseCase != (ifStatement0)->elseCase)
         {
             (writeln_intended)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"else", 4));
             (emit_statement)(emitter0, (ifStatement0)->elseCase);
@@ -6657,7 +6657,7 @@ void emit_return_statement(Emitter emitter0, BoundReturnStatement returnStatemen
 {
     GC_FRAME_INIT(2, GC_LOCAL(emitter0), GC_LOCAL(returnStatement0));
     {
-        if (((Object)((emitter0)->currentFunction)) == ((Object)(NULL)))
+        if (((Object)((emitter0)->currentFunction)) == ((Object)((emitter0)->currentFunction)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Requires current function", 25));
         }
@@ -6666,7 +6666,7 @@ void emit_return_statement(Emitter emitter0, BoundReturnStatement returnStatemen
             (writeln_intended)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"GC_FRAME_DESTROY;", 17));
         }
         (write_intended)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"return", 6));
-        if ((returnStatement0)->value != NULL)
+        if ((returnStatement0)->value != (returnStatement0)->value)
         {
             (write)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)" ", 1));
             (emit_expression)(emitter0, (returnStatement0)->value);
@@ -6757,7 +6757,7 @@ void emit_track_func_type(Emitter emitter0, DataType dataType0)
     i32 i1;
     GC_FRAME_INIT(2, GC_LOCAL(emitter0), GC_LOCAL(dataType0));
     {
-        if (((Object)((dataType0)->generics)) == ((Object)(NULL)))
+        if (((Object)((dataType0)->generics)) == ((Object)((dataType0)->generics)))
         {
             (PANIC)(STRING_CTOR(String_impl, String_type, (uchar*)"Func type must have generic parameters", 38));
         }

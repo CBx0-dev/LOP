@@ -212,6 +212,9 @@ function lex_char(lexer: Lexer): Token {
 function lex_string(lexer: Lexer): Token {
     let value: string = next_char(lexer);
     while (current_char(lexer) != "\"" && !is_eof(lexer)) {
+        if (current_char(lexer) == "\\") {
+            value += next_char(lexer);
+        }
         value += next_char(lexer);
     }
 

@@ -34,6 +34,7 @@ func entry(): i32 {
     list_push(files, "./input/conversion.lop");
     list_push(files, "./input/scope.lop");
     list_push(files, "./input/binder.lop");
+    list_push(files, "./input/c_emitter.lop");
 
     let units: ObjectList = list_init();
 
@@ -51,6 +52,11 @@ func entry(): i32 {
 
     let binder: Binder = binder_init(units);
     let program: BoundProgram = binder_bind(binder);
+
+    let outputFile: Object = fs_open_file("./output/main2.c");
+
+    let emitter: Emitter = emitter_init(outputFile);
+    emit_program(emitter, program);
 
     return 0;
 }

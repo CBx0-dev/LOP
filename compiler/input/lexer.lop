@@ -256,9 +256,8 @@ func lex_string(lexer: Lexer): Token {
     let startCol: i32 = lexer.currentCol;
     next_char(lexer);
 
-    while (current_char(lexer) != '"' && !lexer_is_eof(lexer)) {
+    while (current_char(lexer) != '"' && current_char(lexer) != '\n' && !lexer_is_eof(lexer)) {
         if (current_char(lexer) == '\\') {
-            next_char(lexer);
             next_char(lexer);
         }
         next_char(lexer);

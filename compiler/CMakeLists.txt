@@ -20,4 +20,12 @@ add_executable(gen
         output/fs.c
 )
 
+add_executable(gen2
+        output/main2.c
+        output/string_obj.c
+        output/string_obj.h
+        output/fs.c
+)
+
 target_link_libraries(gen PRIVATE runtime)
+target_link_libraries(gen2 PRIVATE runtime)

@@ -15,6 +15,7 @@ const files: string[] = [
     path.join(__dirname, "..", "input", "conversion.lop"),
     path.join(__dirname, "..", "input", "scope.lop"),
     path.join(__dirname, "..", "input", "binder.lop"),
+    path.join(__dirname, "..", "input", "c_emitter.lop"),
 ];
 
 const units: CompilationUnit[] = [];
