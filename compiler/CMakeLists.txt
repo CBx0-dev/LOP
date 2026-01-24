@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.1)
 project(LOP C)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 
 include_directories(runtime)
 
@@ -14,6 +14,7 @@ add_library(runtime STATIC
 )
 
 add_executable(gen
+        output/entry.c
         output/main.c
         output/string_obj.c
         output/string_obj.h
@@ -21,6 +22,7 @@ add_executable(gen
 )
 
 add_executable(gen2
+        output/entry.c
         output/main2.c
         output/string_obj.c
         output/string_obj.h

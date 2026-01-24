@@ -17,7 +17,6 @@ type ObjectListIterator {
     length: i32;
 }
 
-
 func list_init(): ObjectList {
     let list: ObjectList = new ObjectList();
     list.length = 0;
@@ -38,7 +37,7 @@ func list_push(list: ObjectList, value: Object): void {
     if (list.first == null && list.last == null) {
         list.first = item;
         list.last = item;
-        return;    
+        return;
     }
 
     list.last.next = item;

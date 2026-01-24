@@ -772,7 +772,7 @@ func bind_binary_expression(binder: Binder, binaryExpression: BinaryExpression):
             left = bind_expression(binder, binaryExpression.left, RETURN_TYPE(right));
         } else if (right is BoundNullExpression && !(left is BoundNullExpression)) {
             // TODO Can be replace by setting returnType directly with the of left
-            right = bind_expression(binder, binaryExpression.left, RETURN_TYPE(left));
+            right = bind_expression(binder, binaryExpression.right, RETURN_TYPE(right));
         }
     }
 

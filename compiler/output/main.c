@@ -1757,7 +1757,6 @@ bool char_is_alpha(uchar c0);
 bool char_is_numeric(uchar c0);
 bool char_is_alpha_numeric(uchar c0);
 bool char_is_whitespace(uchar c0);
-i32 main();
 i32 entry();
 ObjectList list_init();
 void list_push(ObjectList list0, Object value0);
@@ -1973,15 +1972,6 @@ bool char_is_whitespace(uchar c0)
 {
     {
         return c0 == ' ' || c0 == '\t' || c0 == '\n' || c0 == '\r';
-    }
-}
-
-i32 main()
-{
-    i32 exit1;
-    {
-        exit1 = (entry)();
-        return exit1;
     }
 }
 
@@ -5011,7 +5001,7 @@ BoundBinaryExpression bind_binary_expression(Binder binder0, BinaryExpression bi
             else
             if (OBJECT_TYPEOF(right2) == &BoundNullExpression_type && !(OBJECT_TYPEOF(left1) == &BoundNullExpression_type))
             {
-                right2 = (bind_expression)(binder0, (binaryExpression0)->left, (RETURN_TYPE)(left1));
+                right2 = (bind_expression)(binder0, (binaryExpression0)->right, (RETURN_TYPE)(right2));
             }
         }
         operator3 = (lookup_binary_operator)(binder0, ((binaryExpression0)->operator)->kind, (RETURN_TYPE)(left1), (RETURN_TYPE)(right2));

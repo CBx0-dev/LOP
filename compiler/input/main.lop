@@ -15,14 +15,6 @@ extern type String {
     length: i32;
 }
 
-func main(): i32 {
-    let exit: i32 = entry();
-    // TODO activate GC
-    // gc_mark_sweep();
-
-    return exit;
-}
-
 func entry(): i32 {
     let files: ObjectList = list_init();
     list_push(files, "./input/panic.lop");
