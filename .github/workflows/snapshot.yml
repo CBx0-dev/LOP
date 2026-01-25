@@ -11,6 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
 
@@ -72,7 +73,7 @@ jobs:
         run: |
           cd compiler
           pwd
-          ls -ls
+          ls -lsR
           ./$SNAPSHOT_DIR/lopc
 
       - name: "(WINDOWS) Run compiler"
