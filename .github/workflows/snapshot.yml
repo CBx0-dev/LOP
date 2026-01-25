@@ -1,0 +1,143 @@
+name: Snapshot
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: write
+jobs:
+  build:
+    name: "Build Snapshot"
+    if: github.event.pull_request.merged == true
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    env:
+      SNAPSHOT_DIR: snapshot
+      SNAPSHOT_PATH: compiler/snapshot
+      BUILD_DIR: build
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with:
+          # REQUIRED for tags
+          fetch-depth: 0
+
+      - name: "Setup CMake"
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '4.1.x'
+
+      - name: "Setup Clang"
+        uses: egor-tensin/setup-clang@v1
+        with:
+          version: 17
+
+      - name: "(WINDOWS) Setup Ninja"
+        if: runner.os == 'Windows'
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: "(LINUX) Download latest compiler"
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p $SNAPSHOT_PATH
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+          if [ -z "$TAG" ]; then
+            echo "Error: No tags found. Previous tag is required for snapshot build."
+            exit 1
+          fi
+          curl -L "https://github.com/${{ github.repository }}/releases/download/$TAG/lopc-linux" -o $SNAPSHOT_PATH/lopc
+          chmod +x $SNAPSHOT_PATH/lopc
+
+      - name: "(WINDOWS) Download latest compiler"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:SNAPSHOT_PATH
+          try {
+            $TAG = git describe --tags --abbrev=0 2>$null
+            if ($null -eq $TAG -or $TAG -eq "") { throw "No tags found" }
+          } catch {
+            Write-Error "Error: No tags found. Previous tag is required for snapshot build."
+            exit 1
+          }
+          $URL = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$TAG/lopc-windows.exe"
+          Invoke-WebRequest -Uri $URL -OutFile "$env:SNAPSHOT_PATH\lopc.exe"
+
+      - name: "(LINUX) Run compiler"
+        if: runner.os == 'Linux'
+        run: |
+          cd compiler
+          ./$SNAPSHOT_DIR/lopc
+
+      - name: "(WINDOWS) Run compiler"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd compiler
+          & ".\$env:SNAPSHOT_DIR\lopc.exe"
+
+      - name: "(LINUX) Build CMake project"
+        if: runner.os == 'Linux'
+        run: |
+          cd compiler
+          cmake -S . -B $BUILD_DIR -DCMAKE_C_COMPILER=clang
+          cmake --build $BUILD_DIR --target lopc
+          mv $BUILD_DIR/lopc $BUILD_DIR/lopc-linux
+
+      - name: "(WINDOWS) Build CMake project"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd compiler
+          cmake -S . -B $env:BUILD_DIR -G Ninja -DCMAKE_C_COMPILER=clang
+          cmake --build $env:BUILD_DIR --target lopc
+          Move-Item "compiler/$env:BUILD_DIR\lopc.exe" "compiler/$env:BUILD_DIR\lopc-windows.exe"
+
+      - name: "(LINUX) Upload Artifact"
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lopc-${{ runner.os }}
+          path: compiler/build/lopc-linux
+
+      - name: "(WINDOWS) Upload Artifact"
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lopc-${{ runner.os }}
+          path: compiler/build/lopc-windows.exe
+
+  release:
+    name: "Publish Snapshot"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Download Artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: "Determine new tag"
+        id: tag
+        shell: bash
+        run: |
+          echo "new_tag=snapshot-${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+      - name: "Create release"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.new_tag }}
+          files: artifacts/*
+          name: Snapshot ${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
