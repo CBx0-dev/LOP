@@ -13,7 +13,7 @@ add_library(runtime STATIC
     runtime/primitive.h
 )
 
-add_executable(gen
+add_executable(lopc
         output/entry.c
         output/main.c
         output/string_obj.c
@@ -21,13 +21,4 @@ add_executable(gen
         output/fs.c
 )
 
-add_executable(gen2
-        output/entry.c
-        output/main2.c
-        output/string_obj.c
-        output/string_obj.h
-        output/fs.c
-)
-
-target_link_libraries(gen PRIVATE runtime)
-target_link_libraries(gen2 PRIVATE runtime)
+target_link_libraries(lopc PRIVATE runtime)
