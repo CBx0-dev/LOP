@@ -50,5 +50,7 @@ func entry(): i32 {
     let emitter: Emitter = emitter_init(outputFile);
     emit_program(emitter, program);
 
+    fs_close_file(outputFile);
+
     return 0;
 }
