@@ -45,7 +45,7 @@ func entry(): i32 {
     let binder: Binder = binder_init(units);
     let program: BoundProgram = binder_bind(binder);
 
-    let outputFile: Object = fs_open_file("./output/main2.c");
+    let outputFile: Object = fs_open_file("./output/main.c");
 
     let emitter: Emitter = emitter_init(outputFile);
     emit_program(emitter, program);

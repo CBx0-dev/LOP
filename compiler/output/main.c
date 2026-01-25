@@ -2014,7 +2014,7 @@ i32 entry()
         }
         binder8 = (binder_init)(units2);
         program9 = (binder_bind)(binder8);
-        outputFile10 = (fs_open_file)(STRING_CTOR(String_impl, String_type, (uchar*)"./output/main2.c", 16));
+        outputFile10 = (fs_open_file)(STRING_CTOR(String_impl, String_type, (uchar*)"./output/main.c", 15));
         emitter11 = (emitter_init)(outputFile10);
         (emit_program)(emitter11, program9);
         GC_FRAME_DESTROY;
@@ -7050,74 +7050,4 @@ void emit_program(Emitter emitter0, BoundProgram program0)
     ObjectListIterator funcIter12 = NULL;
     GC_FRAME_INIT(14, GC_LOCAL(emitter0), GC_LOCAL(program0), GC_LOCAL(enumIter1), GC_LOCAL(typeHeaderIter2), GC_LOCAL(externTypeHeaderIter3), GC_LOCAL(trackedTypeIter4), GC_LOCAL(dataType5), GC_LOCAL(typeIter6), GC_LOCAL(typeMember7), GC_LOCAL(externTypeIter8), GC_LOCAL(typeMember9), GC_LOCAL(externFuncIter10), GC_LOCAL(funcHeaderIter11), GC_LOCAL(funcIter12));
     {
-        (emit_header)(emitter0);
-        enumIter1 = (list_iterator)((program0)->enums);
-        while ((list_iterator_has_next)(enumIter1))
-        {
-            (emit_enum_member)(emitter0, ((BoundEnumMember)((list_iterator_next)(enumIter1))));
-        }
-        typeHeaderIter2 = (list_iterator)((program0)->types);
-        while ((list_iterator_has_next)(typeHeaderIter2))
-        {
-            (emit_type_member_header)(emitter0, ((BoundTypeMember)((list_iterator_next)(typeHeaderIter2))));
-        }
-        externTypeHeaderIter3 = (list_iterator)((program0)->externTypes);
-        while ((list_iterator_has_next)(externTypeHeaderIter3))
-        {
-            (emit_type_member_header)(emitter0, ((BoundTypeMember)((list_iterator_next)(externTypeHeaderIter3))));
-        }
-        (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-        trackedTypeIter4 = (list_iterator)((program0)->trackedTypes);
-        while ((list_iterator_has_next)(trackedTypeIter4))
-        {
-            dataType5 = ((DataType)((list_iterator_next)(trackedTypeIter4)));
-            if ((string_equals)((dataType5)->name, STRING_CTOR(String_impl, String_type, (uchar*)"Func", 4)))
-            {
-                (emit_track_func_type)(emitter0, dataType5);
-            }
-        }
-        (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-        typeIter6 = (list_iterator)((program0)->types);
-        while ((list_iterator_has_next)(typeIter6))
-        {
-            typeMember7 = ((BoundTypeMember)((list_iterator_next)(typeIter6)));
-            (emit_type_member)(emitter0, typeMember7);
-            (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-            if (((typeMember7)->meta)->generateTrace)
-            {
-                (emit_type_member_trace)(emitter0, typeMember7);
-                (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-            }
-            (emit_type_member_type)(emitter0, typeMember7);
-        }
-        externTypeIter8 = (list_iterator)((program0)->externTypes);
-        while ((list_iterator_has_next)(externTypeIter8))
-        {
-            typeMember9 = ((BoundTypeMember)((list_iterator_next)(externTypeIter8)));
-            (emit_type_member)(emitter0, typeMember9);
-            (emit_extern_type_member_type)(emitter0, typeMember9);
-            (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-        }
-        (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-        (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-        externFuncIter10 = (list_iterator)((program0)->externFunctions);
-        while ((list_iterator_has_next)(externFuncIter10))
-        {
-            (emit_extern_function_member)(emitter0, ((BoundFunctionMember)((list_iterator_next)(externFuncIter10))));
-        }
-        (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-        funcHeaderIter11 = (list_iterator)((program0)->functions);
-        while ((list_iterator_has_next)(funcHeaderIter11))
-        {
-            (emit_function_member_header)(emitter0, ((BoundFunctionMember)((list_iterator_next)(funcHeaderIter11))));
-        }
-        (writeln)(emitter0, STRING_CTOR(String_impl, String_type, (uchar*)"", 0));
-        funcIter12 = (list_iterator)((program0)->functions);
-        while ((list_iterator_has_next)(funcIter12))
-        {
-            (emit_function_member)(emitter0, ((BoundFunctionMember)((list_iterator_next)(funcIter12))));
-        }
-    }
-    GC_FRAME_DESTROY;
-}
-
+        (emit_header)(emitter

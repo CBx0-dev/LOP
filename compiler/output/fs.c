@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "../runtime/object.h"
+#include "object.h"
 #include "string_obj.h"
 
 typedef struct String_impl* String;
