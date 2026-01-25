@@ -71,22 +71,22 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           cd compiler
+          pwd
+          ls -ls
           ./$SNAPSHOT_DIR/lopc
 
       - name: "(WINDOWS) Run compiler"
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          cd compiler
           pwd
           ls
-          cd compiler
           & ".\$env:SNAPSHOT_DIR\lopc.exe"
 
       - name: "(LINUX) Build CMake project"
         if: runner.os == 'Linux'
         run: |
-          pwd
-          ls -ls
           cd compiler
           cmake -S . -B $BUILD_DIR -DCMAKE_C_COMPILER=clang
           cmake --build $BUILD_DIR --target lopc
