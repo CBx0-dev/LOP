@@ -100,7 +100,7 @@ jobs:
           cd compiler
           cmake -S . -B $env:BUILD_DIR -G Ninja -DCMAKE_C_COMPILER=clang
           cmake --build $env:BUILD_DIR --target lopc
-          Move-Item "compiler/$env:BUILD_DIR\lopc.exe" "compiler/$env:BUILD_DIR\lopc-windows.exe"
+          Move-Item ".\$env:BUILD_DIR\lopc.exe" ".\$env:BUILD_DIR\lopc-windows.exe"
 
       - name: "(LINUX) Upload Artifact"
         if: runner.os == 'Linux'
