@@ -9,6 +9,7 @@ enum DiagnosticCode {
     // Parser
     EXPECTED_TOKEN,
     UNEXPECTED_TOKEN,
+    EMPTY_GENERIC,
 }
 
 type DiagnosticBag {
@@ -74,6 +75,10 @@ func report_expected_token2(bag: DiagnosticBag, span: LocationSpan, got: TokenKi
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPECTED_TOKEN, span, args);
 }
 
+func report_empty_generic(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EMPTY_GENERIC, span, list_init());
+    list_push(bag.list, diagnostic);
+}
 
 func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: ObjectList): void {
     if (code == DiagnosticCode.UNEXPECTED_CHAR) {
@@ -113,6 +118,8 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
         // TODO replace with actually token content
         fs_write_int(fd, got);
         fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.EMPTY_GENERIC) {
+        fs_write_string(fd, "Generic part of a Type cannot be empty");
     }
 }
 

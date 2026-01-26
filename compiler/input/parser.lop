@@ -282,8 +282,9 @@ func next_token(parser: Parser): Token {
 func match_token(parser: Parser, kind: TokenKind): Token {
     let curr: Token = current_token(parser);
     if (curr.kind != kind) {
-        // TODO report diagnostic
-        PANIC("Expected token, was not received");
+        report_expected_token(parser.diagnostics, curr.span, curr.kind, kind);
+        parser.position = parser.position + 1;
+        return token_init(kind, curr.value, curr.span);
     }
 
     parser.position = parser.position + 1;
@@ -293,8 +294,9 @@ func match_token(parser: Parser, kind: TokenKind): Token {
 func match_token2(parser: Parser, kind1: TokenKind, kind2: TokenKind): Token {
     let curr: Token = current_token(parser);
     if (curr.kind != kind1 && curr.kind != kind2) {
-        // TODO report diagnostic
-        PANIC("Expected token, was not received");
+        report_expected_token2(parser.diagnostics, curr.span, curr.kind, kind1, kind2);
+        parser.position = parser.position + 1;
+        return token_init(kind1, curr.value, curr.span);
     }
 
     parser.position = parser.position + 1;
@@ -381,8 +383,7 @@ func parse_type_signature(parser: Parser): TypeSignature {
         }
 
         if (generics.length == 0) {
-            // TODO replace with diagnostic
-            PANIC("Generic count cannot be zero");
+            report_empty_generic(parser.diagnostics, identifier.span);
         }
 
         let rAngle: Token = match_token(parser, TokenKind.RANGLE);
