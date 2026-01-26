@@ -10,6 +10,12 @@ enum DiagnosticCode {
     EXPECTED_TOKEN,
     UNEXPECTED_TOKEN,
     EMPTY_GENERIC,
+
+    // Binder
+    EMPTY_FUNC_GENERIC,
+    SPAN_SIGNATURE,
+    UNKNOWN_DYNAMIC,
+    UNKNOWN_TYPE,
 }
 
 type DiagnosticBag {
@@ -80,6 +86,29 @@ func report_empty_generic(bag: DiagnosticBag, span: LocationSpan): void {
     list_push(bag.list, diagnostic);
 }
 
+func report_empty_func_generic(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EMPTY_FUNC_GENERIC, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_span_signature(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.SPAN_SIGNATURE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_dynamic_type(bag: DiagnosticBag, span: LocationSpan, identifier: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, identifier);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_DYNAMIC, span, args);
+    list_push(bag.list, diagnostic);    
+}
+
+func report_unknown_type(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.SPAN_SIGNATURE, span, list_init());
+    list_push(bag.list, diagnostic);    
+}
+
 func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: ObjectList): void {
     if (code == DiagnosticCode.UNEXPECTED_CHAR) {
         let c: String = <String>list_get_value(args, 0);
@@ -120,6 +149,18 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
         fs_write_string(fd, "'");
     } else if (code == DiagnosticCode.EMPTY_GENERIC) {
         fs_write_string(fd, "Generic part of a Type cannot be empty");
+    } else if (code == DiagnosticCode.EMPTY_FUNC_GENERIC) {
+        fs_write_string(fd, "'Func' Type must have at least one generic");
+    } else if (code == DiagnosticCode.SPAN_SIGNATURE) {
+        fs_write_string(fd, "'Span' Must have exactly one generic");
+    } else if (code == DiagnosticCode.UNKNOWN_DYNAMIC) {
+        let c: String = <String>list_get_value(args, 0);
+        
+        fs_write_string(fd, "Unkown dynamic type '");
+        fs_write_string(fd, c);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNKNOWN_TYPE) {
+        fs_write_string(fd, "Unknown Type");
     }
 }
 

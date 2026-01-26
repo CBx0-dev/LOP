@@ -52,7 +52,7 @@ func entry(args: ObjectList): i32 {
         return 1;
     }
 
-    let binder: Binder = binder_init(units);
+    let binder: Binder = binder_init(diagnostics, units);
     let program: BoundProgram = binder_bind(binder);
 
     if (diagnostics.list.length > 0) {

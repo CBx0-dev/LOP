@@ -8,12 +8,14 @@ type Binder {
     units: ObjectList;
     trackedTypes: ObjectList;
     
+    diagnostics: DiagnosticBag;
     rootScope: Scope;
     currentScope: Scope;
     currentFunction: BoundFunctionMember;
     conversionRules: ObjectList;
 
     // Core types
+    errorType: DataType;
     voidType: DataType;
     objectType: DataType;
     boolType: DataType;
@@ -398,9 +400,10 @@ func binary_operator_init(tokenKind: TokenKind, leftType: DataType, rightType: D
     return operator;
 }
 
-func binder_init(units: ObjectList): Binder {
+func binder_init(diagnostics: DiagnosticBag, units: ObjectList): Binder {
     let scope: Scope = scope_init(null);
 
+    let errorType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "?", "?");
     let voidType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "void", "void");
     let objectType: DataType = type_init_simple(DataTypeKind.OBJECT, "Object", "Object");
     let boolType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "bool", "bool");
@@ -524,11 +527,13 @@ func binder_init(units: ObjectList): Binder {
     
     binder.units = units;
     binder.trackedTypes = list_init();
+    binder.diagnostics = diagnostics;
     binder.rootScope = scope;
     binder.currentScope = scope;
     binder.currentFunction = null;
     binder.conversionRules = conversionRules;
 
+    binder.errorType = errorType;
     binder.voidType = voidType;
     binder.objectType = objectType;
     binder.boolType = boolType;
@@ -571,10 +576,10 @@ func generate_func_cName(generics: ObjectList): String {
     return cName;
 }
 
-func bind_type_signature_dynamic_func(binder: Binder, dynamic: TypeSignatureDynamic): DataType {
+func bind_type_signature_dynamic_func(binder: Binder, span: LocationSpan, dynamic: TypeSignatureDynamic): DataType {
     if (dynamic.generics.length < 1) {
-        // TODO replace with diagnostics
-        PANIC("Function type signature must have at least one generic type");
+        report_empty_func_generic(binder.diagnostics, span);
+        return binder.errorType;
     }
 
     let generics: ObjectList = list_init();
@@ -596,10 +601,10 @@ func bind_type_signature_dynamic_func(binder: Binder, dynamic: TypeSignatureDyna
     return dataType;
 }
 
-func bind_type_signature_dynamic_span(binder: Binder, dynamic: TypeSignatureDynamic): DataType {
+func bind_type_signature_dynamic_span(binder: Binder, span: LocationSpan, dynamic: TypeSignatureDynamic): DataType {
     if (dynamic.generics.length != 1) {
-        // TODO replace with diagnostics
-        PANIC("Span type signature must have one generic type");
+        report_span_signature(binder.diagnostics, span);
+        return binder.errorType;
     }
 
     let generic: DataType = bind_type_signature(binder, (<TypeSignatureDynamicGeneric>list_get_value(dynamic.generics, 0)).typeSignature, false);
@@ -620,14 +625,14 @@ func bind_type_signature_dynamic_span(binder: Binder, dynamic: TypeSignatureDyna
 func bind_type_signature_dynamic(binder: Binder, signature: TypeSignature, dynamic: TypeSignatureDynamic): DataType {
     let keyword: String = signature.identifier.value;
     if (string_equals(keyword, "Func")) {
-        return bind_type_signature_dynamic_func(binder, dynamic);
+        return bind_type_signature_dynamic_func(binder, signature.identifier.span, dynamic);
     }
     if (string_equals(keyword, "Span")) {
-        return bind_type_signature_dynamic_span(binder, dynamic);
+        return bind_type_signature_dynamic_span(binder, signature.identifier.span, dynamic);
     }
 
-    // TODO replace with diagnostics
-    PANIC("Unknown dynamic type signature");
+    report_unknown_dynamic_type(binder.diagnostics, signature.identifier.span, keyword);
+    return binder.errorType;
 }
 
 func bind_type_signature(binder: Binder, signature: TypeSignature, allowVoid: bool): DataType {
@@ -641,8 +646,8 @@ func bind_type_signature(binder: Binder, signature: TypeSignature, allowVoid: bo
 
     let dataType: DataType = scope_lookup_type(binder.currentScope, signature.identifier.value, null);
     if (dataType == null) {
-        // TODO replace with diagnostics
-        PANIC("Unkown type");
+        report_unknown_type(binder.diagnostics, signature.identifier.span);
+        return binder.errorType;
     }
 
     return dataType;
