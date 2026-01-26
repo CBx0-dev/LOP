@@ -35,6 +35,10 @@ Object fs_open_file(String path)
     return file;
 }
 
+Object fs_get_stderr() {
+    return stderr;
+}
+
 void fs_write_string(Object file, String str)
 {
     fprintf(file, "%s", (const char*)str->buff);
@@ -43,6 +47,11 @@ void fs_write_string(Object file, String str)
 void fs_write_int(Object file, i32 value)
 {
     fprintf(file, "%i", value);
+}
+
+void fs_write_char(Object file, uchar c)
+{
+    fprintf(file, "%c", (const char)c);
 }
 
 void fs_close_file(Object file)

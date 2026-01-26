@@ -54,6 +54,7 @@ enum TokenKind {
 }
 
 type Lexer {
+	diagnostics: DiagnosticBag;
     filename: String;
     content: String;
     position: i32;
@@ -62,6 +63,7 @@ type Lexer {
 }
 
 type LocationSpan {
+    filename: String;
     startPos: i32;
     endPos: i32;
     startLine: i32;
@@ -76,9 +78,10 @@ type Token {
     span: LocationSpan;
 }
 
-func lexer_init(filename: String, content: String): Lexer {
+func lexer_init(diagnostics: DiagnosticBag, filename: String, content: String): Lexer {
     let lexer: Lexer = new Lexer();
     
+	lexer.diagnostics = diagnostics;
     lexer.filename = filename;
     lexer.content = content;
     lexer.position = 0;
@@ -88,9 +91,10 @@ func lexer_init(filename: String, content: String): Lexer {
     return lexer;
 }
 
-func locationSpan_init(startPos: i32, endPos: i32, startLine: i32, endLine: i32, startCol: i32, endCol: i32): LocationSpan {
+func locationSpan_init(filename: String, startPos: i32, endPos: i32, startLine: i32, endLine: i32, startCol: i32, endCol: i32): LocationSpan {
     let span: LocationSpan = new LocationSpan();
     
+    span.filename = filename;
     span.startPos = startPos;
     span.endPos = endPos;
     span.startLine = startLine;
@@ -156,7 +160,7 @@ func lex_whitespace(lexer: Lexer): Token {
     }
 
     let value: String = string_substring(lexer.content, startPos, lexer.position);
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
     return token_init(TokenKind.WHITESPACE, value, span);
 }
 
@@ -206,7 +210,7 @@ func lex_identifier(lexer: Lexer): Token {
         kind = TokenKind.IS_KEYWORD;
     }
     
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
 
     return token_init(kind, value, span);
 }
@@ -222,7 +226,7 @@ func lex_numeric(lexer: Lexer): Token {
     }
 
     let value: String = string_substring(lexer.content, startPos, lexer.position);
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
     return token_init(TokenKind.INTEGER_LITERAL, value, span);
 }
 
@@ -239,14 +243,20 @@ func lex_char(lexer: Lexer): Token {
         next_char(lexer);
     }
 
-    if (current_char(lexer) != '\'') {
-        PANIC("Missing char close");
+    let missingClose: bool = true;
+    
+    if (current_char(lexer) == '\'') {
+        missingClose = false;
+        next_char(lexer); // "'"
     }
 
-    next_char(lexer); // "'"
-
     let value: String = string_substring(lexer.content, startPos, lexer.position);
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    
+    if (missingClose) {
+        report_unclosed_char(lexer.diagnostics, span);
+    }
+    
     return token_init(TokenKind.CHAR_LITERAL, value, span);
 }
 
@@ -263,13 +273,20 @@ func lex_string(lexer: Lexer): Token {
         next_char(lexer);
     }
 
-    if (current_char(lexer) != '"') {
-        PANIC("Missing string close");
+    let missingClose: bool = true;
+
+    if (current_char(lexer) == '"') {
+        missingClose = false;
+        next_char(lexer);
     }
-    next_char(lexer);
 
     let value: String = string_substring(lexer.content, startPos, lexer.position);
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+
+    if (missingClose) {
+        report_unclosed_string(lexer.diagnostics, span);
+    }
+
     return token_init(TokenKind.STRING_LITERAL, value, span);
 }
 
@@ -283,7 +300,7 @@ func lex_single_line_comment(lexer: Lexer): Token {
     }
 
     let value: String = string_substring(lexer.content, startPos, lexer.position);
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
     return token_init(TokenKind.SINGLE_COMMENT, value, span);
 }
 
@@ -300,13 +317,13 @@ func lex_multi_line_comment(lexer: Lexer): Token {
     next_char(lexer);
 
     let value: String = string_substring(lexer.content, startPos, lexer.position);
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
     return token_init(TokenKind.MULTI_COMMENT, value, span);
 }
 
 func lexer_next_token(lexer: Lexer): Token {
     if (lexer_is_eof(lexer)) {
-        return token_init(TokenKind.EOF, "", locationSpan_init(lexer.position, lexer.position, lexer.currentLine, lexer.currentLine, lexer.currentCol, lexer.currentCol));
+        return token_init(TokenKind.EOF, "", locationSpan_init(lexer.filename, lexer.position, lexer.position, lexer.currentLine, lexer.currentLine, lexer.currentCol, lexer.currentCol));
     }
 
     if (char_is_whitespace(current_char(lexer))) {
@@ -414,6 +431,11 @@ func lexer_next_token(lexer: Lexer): Token {
     }
 
     let value: String = string_substring(lexer.content, startPos, lexer.position);
-    let span: LocationSpan = locationSpan_init(startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
-    return token_init(kind, value, span);
+    let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);
+    
+    if (kind == TokenKind.ERROR) {
+        report_unexpected_char(lexer.diagnostics, span, value);
+    }
+
+	return token_init(kind, value, span);
 }

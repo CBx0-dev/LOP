@@ -1,0 +1,147 @@
+extern func fs_get_stderr(): Object;
+
+enum DiagnosticCode {
+    // Lexer
+    UNEXPECTED_CHAR,
+    UNCLOSED_STRING,
+    UNCLOSED_CHAR,
+
+    // Parser
+    EXPECTED_TOKEN,
+    UNEXPECTED_TOKEN,
+}
+
+type DiagnosticBag {
+    list: ObjectList;
+}
+
+type Diagnostic {
+    code: DiagnosticCode;
+    span: LocationSpan;
+    args: ObjectList;
+}
+
+func diagnosticBag_init(): DiagnosticBag {
+    let diagnostics: DiagnosticBag = new DiagnosticBag();
+
+    diagnostics.list = list_init();
+
+    return diagnostics;
+}
+
+func diagnostic_init(code: DiagnosticCode, span: LocationSpan, args: ObjectList): Diagnostic {
+    let diagnostic: Diagnostic = new Diagnostic();
+	
+    diagnostic.code = code;
+	diagnostic.span = span;
+    diagnostic.args = args;
+
+    return diagnostic;
+}
+
+func report_unexpected_char(bag: DiagnosticBag, span: LocationSpan, value: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, value);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNEXPECTED_CHAR, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_unclosed_string(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNCLOSED_STRING, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_unclosed_char(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNCLOSED_CHAR, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_expected_token(bag: DiagnosticBag, span: LocationSpan, got: TokenKind, expected: TokenKind): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(got));
+    list_push(args, box_i32(expected));
+    
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPECTED_TOKEN, span, args);
+}
+
+func report_expected_token2(bag: DiagnosticBag, span: LocationSpan, got: TokenKind, expected1: TokenKind, expected2: TokenKind): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(got));
+    list_push(args, box_i32(expected1));
+    list_push(args, box_i32(expected2));
+    
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPECTED_TOKEN, span, args);
+}
+
+
+func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: ObjectList): void {
+    if (code == DiagnosticCode.UNEXPECTED_CHAR) {
+        let c: String = <String>list_get_value(args, 0);
+        fs_write_string(fd, "Unexpected character '");
+        fs_write_string(fd, c);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNCLOSED_STRING) {
+        fs_write_string(fd, "Unterminated string literal");    
+    } else if (code == DiagnosticCode.UNCLOSED_CHAR) {
+        fs_write_string(fd, "Unterminated char literal");    
+    } else if (code == DiagnosticCode.EXPECTED_TOKEN) {
+        let got: i32 = (<I32>list_get_value(args, 0)).value;
+        let expected: i32 = (<I32>list_get_value(args, 1)).value;
+        
+        fs_write_string(fd, "Expected token '");
+        // TODO replace with actually token content
+        fs_write_int(fd, expected);
+        fs_write_string(fd, "'");
+
+        if (args.length == 3) {
+            let expected: i32 = (<I32>list_get_value(args, 2)).value;
+            fs_write_string(fd, ", or '");
+            // TODO replace with actually token content
+            fs_write_int(fd, expected);
+            fs_write_string(fd, "'");
+        }
+
+        fs_write_string(fd, ", but got '");
+        // TODO replace with actually token content
+        fs_write_int(fd, got);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNEXPECTED_TOKEN) {
+        let got: i32 = (<I32>list_get_value(args, 0)).value;
+        
+        fs_write_string(fd, "Unexpected token '");
+        // TODO replace with actually token content
+        fs_write_int(fd, got);
+        fs_write_string(fd, "'");
+    }
+}
+
+func diagnostic_print_single(fd: Object, diagnostic: Diagnostic): void {
+    let code: DiagnosticCode = diagnostic.code;
+    let span: LocationSpan = diagnostic.span;
+    let args: ObjectList = diagnostic.args;
+
+    fs_write_string(fd, span.filename);
+    fs_write_string(fd, "(");
+    fs_write_int(fd, span.startLine);
+    fs_write_string(fd, ":");
+    fs_write_int(fd, span.startCol);
+    fs_write_string(fd, ") [");
+    fs_write_string(fd, "LOP");
+    fs_write_int(fd, code);
+    fs_write_string(fd, "]: ");
+
+    diagnostic_print_code_message(fd, code, args);    
+
+    fs_write_string(fd, "\n");
+}
+
+func diagnostic_print(diagnostics: DiagnosticBag): void {
+    let fd: Object = fs_get_stderr();
+    let iter: ObjectListIterator = list_iterator(diagnostics.list);
+    
+    while (list_iterator_has_next(iter)) {
+        let diagnostic: Diagnostic = <Diagnostic>list_iterator_next(iter);
+        diagnostic_print_single(fd, diagnostic);
+    }
+}

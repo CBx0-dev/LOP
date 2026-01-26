@@ -1,5 +1,6 @@
 extern func fs_open_file(path: String): Object;
 extern func fs_write_string(file: Object, value: String): void;
+extern func fs_write_char(file: Object, value: char): void;
 extern func fs_write_int(file: Object, value: i32): void;
 extern func fs_close_file(file: Object): void;
 

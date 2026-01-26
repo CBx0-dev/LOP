@@ -1,0 +1,11 @@
+type I32 {
+    value: i32;
+}
+
+func box_i32(value: i32): I32 {
+    let box: I32 = new I32();
+
+    box.value = value;
+
+    return box;
+}

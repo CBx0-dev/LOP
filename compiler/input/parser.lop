@@ -1,4 +1,5 @@
 type Parser {
+    diagnostics: DiagnosticBag;
     tokens: ObjectList;
     position: i32;
 }
@@ -223,8 +224,8 @@ type TypeSignature {
     dynamic: TypeSignatureDynamic; 
 }
 
-func parser_init(filename: String, content: String): Parser {
-    let lexer: Lexer = lexer_init(filename, content);
+func parser_init(diagnostics: DiagnosticBag, filename: String, content: String): Parser {
+    let lexer: Lexer = lexer_init(diagnostics, filename, content);
     let tokens: ObjectList = list_init();
     let token: Token = lexer_next_token(lexer);
     while (token.kind != TokenKind.EOF) {
@@ -247,6 +248,7 @@ func parser_init(filename: String, content: String): Parser {
 
     let parser: Parser = new Parser();
     
+    parser.diagnostics = diagnostics;
     parser.tokens = tokens;
     parser.position = 0;
 
