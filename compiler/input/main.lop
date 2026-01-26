@@ -15,25 +15,19 @@ extern type String {
     length: i32;
 }
 
-func entry(): i32 {
-    let files: ObjectList = list_init();
-    list_push(files, "./input/panic.lop");
-    list_push(files, "./input/char.lop");
-    list_push(files, "./input/main.lop");
-    list_push(files, "./input/list.lop");
-    list_push(files, "./input/lexer.lop");
-    list_push(files, "./input/parser.lop");
-    list_push(files, "./input/conversion.lop");
-    list_push(files, "./input/scope.lop");
-    list_push(files, "./input/binder.lop");
-    list_push(files, "./input/c_emitter.lop");
+func entry(args: ObjectList): i32 {
+    let iter: ObjectListIterator = list_iterator(args);
+    // Remove arg0 pointing to executable
+    list_iterator_next(iter);
+    if (!list_iterator_has_next(iter)) {
+        return 1;
+    }
 
+    let output: String = <String>list_iterator_next(iter);
+    
     let units: ObjectList = list_init();
-
-    let i: i32 = 0;
-    while (i < files.length) {
-        let file: String = <String>list_get_value(files, i);
-        i = i + 1;
+    while (list_iterator_has_next(iter)) {
+        let file: String = <String>list_iterator_next(iter);
 
         let content: String = fs_read_file(file);
         let parser: Parser = parser_init(file, content);
@@ -42,10 +36,14 @@ func entry(): i32 {
         list_push(units, unit);
     }
 
+    if (units.length == 0) {
+        return 1;
+    }
+
     let binder: Binder = binder_init(units);
     let program: BoundProgram = binder_bind(binder);
 
-    let outputFile: Object = fs_open_file("./output/main.c");
+    let outputFile: Object = fs_open_file(output);
 
     let emitter: Emitter = emitter_init(outputFile);
     emit_program(emitter, program);
