@@ -74,7 +74,7 @@ jobs:
           cd compiler
           pwd
           ls -lsR
-          ./$SNAPSHOT_DIR/lopc
+          ./compile.sh
 
       - name: "(WINDOWS) Run compiler"
         if: runner.os == 'Windows'
@@ -83,7 +83,7 @@ jobs:
           cd compiler
           pwd
           ls
-          & ".\$env:SNAPSHOT_DIR\lopc.exe"
+          ./compile.ps1
 
       - name: "(LINUX) Build CMake project"
         if: runner.os == 'Linux'
