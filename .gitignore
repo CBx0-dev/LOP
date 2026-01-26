@@ -4,3 +4,4 @@ node_modules
 cmake-build-debug
 *.vsix
 compiler/snapshot
+compiler/output/main.c
