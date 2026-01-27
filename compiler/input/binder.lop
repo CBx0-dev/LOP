@@ -113,6 +113,7 @@ type BoundUnkownExpression {
 }
 
 type BoundEmptyExpression {
+    returnType: DataType;
 }
 
 type BoundCastExpression {
@@ -657,11 +658,15 @@ func bind_type_clause(binder: Binder, typeClause: TypeClause, allowVoid: bool): 
     return bind_type_signature(binder, typeClause.typeSignature, allowVoid);
 }
 
-func bind_ctor_expression(binder: Binder, ctorExpression: CtorExpression): BoundCtorExpression {
+func bind_ctor_expression(binder: Binder, ctorExpression: CtorExpression): Object {
     let dataType: DataType = bind_type_signature(binder, ctorExpression.typeSignature, false);
     if (dataType.kind != DataTypeKind.OBJECT) {
-        // TODO replace with diagnostics
-        PANIC("Can only use with objects");
+        report_invalid_ctor_signature(binder.diagnostics, ctorExpression.keyword.span);
+
+        let node: BoundEmptyExpression = new BoundEmptyExpression();
+        node.returnType = binder.errorType;
+
+        return node;
     }
 
     let node: BoundCtorExpression = new BoundCtorExpression();
@@ -681,11 +686,16 @@ func is_node_assignable(node: Object): bool {
             node is BoundMemberExpression;
 }
 
-func bind_assignment_expression(binder: Binder, assignmentExpression: AssignmentExpression): BoundAssignmentExpression {
+func bind_assignment_expression(binder: Binder, assignmentExpression: AssignmentExpression): Object {
     let left: Object = bind_expression(binder, assignmentExpression.left, null);
     if (!is_node_assignable(left)) {
-        // TODO replace with diagnostics
-        PANIC("Expression is not assignable");
+        report_not_assignable(binder.diagnostics, assignmentExpression.operator.span);
+
+        let node: BoundEmptyExpression = new BoundEmptyExpression();
+        
+        node.returnType = binder.errorType;
+
+        return node;
     }
 
     let right: Object = bind_expression(binder, assignmentExpression.right, RETURN_TYPE(left)); 
@@ -713,7 +723,7 @@ func lookup_unary_operator(binder: Binder, tokenKind: TokenKind, operandType: Da
     return null;
 }
 
-func bind_unary_expression(binder: Binder, unaryExpression: UnaryExpression): BoundUnaryExpression {
+func bind_unary_expression(binder: Binder, unaryExpression: UnaryExpression): Object {
     let right: Object = bind_expression(binder, unaryExpression.right, null);
     let operator: BoundUnaryOperator = lookup_unary_operator(binder, unaryExpression.operator.kind, RETURN_TYPE(right));
 
@@ -746,8 +756,12 @@ func bind_unary_expression(binder: Binder, unaryExpression: UnaryExpression): Bo
         }
     }
 
-    // TODO replace with diagnostics
-    PANIC("Unary operator is not defined for this type");
+    report_unknown_unary_operator(binder.diagnostics, unaryExpression.operator.span, unaryExpression.operator.kind, RETURN_TYPE(right));
+    let node: BoundEmptyExpression = new BoundEmptyExpression();
+    
+    node.returnType = binder.errorType;
+    
+    return node;
 }
 
 func lookup_binary_operator(binder: Binder, tokenKind: TokenKind, leftType: DataType, rightType: DataType): BoundBinaryOperator {
@@ -819,8 +833,12 @@ func bind_binary_expression(binder: Binder, binaryExpression: BinaryExpression):
         }
     }
 
-    // TODO replace with diagnostics
-    PANIC("Binary operator is not defined for those types");
+    report_unknown_unary_operator(binder.diagnostics, binaryExpression.operator.span, binaryExpression.operator.kind, RETURN_TYPE(left), RETURN_TYPE(right));
+    let node: BoundEmptyExpression = new BoundEmptyExpression();
+    
+    node.returnType = binder.errorType;
+    
+    return node;
 }
 
 func bind_call_expression(binder: Binder, callExpression: CallExpression): BoundCallExpression {
@@ -831,7 +849,6 @@ func bind_call_expression(binder: Binder, callExpression: CallExpression): Bound
         PANIC("Expression is not callable");
     }
     if (calleeReturnType.generics == null) {
-        // TODO replace with diagnostic
         PANIC("Function requires generics");
     }
 
@@ -1192,7 +1209,10 @@ func bind_variable_statement(binder: Binder, variableStatement: VariableStatemen
 
         initializer = assignmentExpression;
     } else {
-        initializer = new BoundEmptyExpression();
+        let emptyExpression: BoundEmptyExpression = new BoundEmptyExpression();
+        emptyExpression.returnType = binder.errorType;
+
+        initializer = emptyExpression;
     }
 
     let node: BoundExpressionStatement = new BoundExpressionStatement();

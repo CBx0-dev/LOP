@@ -16,6 +16,10 @@ enum DiagnosticCode {
     SPAN_SIGNATURE,
     UNKNOWN_DYNAMIC,
     UNKNOWN_TYPE,
+    INVALID_CTOR,
+    NOT_ASSIGNABLE,
+    UNKNOWN_UNARY_OPERATOR,
+    UNKNOWN_BINARY_OPERATOR,
 }
 
 type DiagnosticBag {
@@ -109,6 +113,35 @@ func report_unknown_type(bag: DiagnosticBag, span: LocationSpan): void {
     list_push(bag.list, diagnostic);    
 }
 
+func report_invalid_ctor_signature(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.INVALID_CTOR, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_not_assignable(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_ASSIGNABLE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_unary_operator(bag: DiagnosticBag, span: LocationSpan, operator: TokenKind, rightType: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(operator));
+    list_push(args, rightType);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_UNARY_OPERATOR, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_binary_operator(bag: DiagnosticBag, span: LocationSpan, operator: TokenKind, leftType: DataType, rightType: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(operator));
+    list_push(args, leftType);
+    list_push(args, rightType);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_BINARY_OPERATOR, span, args);
+    return diagnostic;
+}
+
 func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: ObjectList): void {
     if (code == DiagnosticCode.UNEXPECTED_CHAR) {
         let c: String = <String>list_get_value(args, 0);
@@ -161,6 +194,33 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
         fs_write_string(fd, "'");
     } else if (code == DiagnosticCode.UNKNOWN_TYPE) {
         fs_write_string(fd, "Unknown Type");
+    } else if (code == DiagnosticCode.INVALID_CTOR) {
+        fs_write_string(fd, "The Type cannot be instantiated");
+    } else if (code == DiagnosticCode.NOT_ASSIGNABLE) {
+        fs_write_string(fd, "Expression is not assignable");
+    } else if (code == DiagnosticCode.UNKNOWN_UNARY_OPERATOR) {
+        let tokenKind: i32 = (<I32>list_get_value(args, 0)).value;
+        let rightType: DataType = <DataType>list_get_value(args, 1);
+
+        fs_write_string(fd, "Unknown unary operator '");
+        fs_write_int(fd, tokenKind);
+        // TODO replace with actually token content
+        fs_write_string(fd, "' for '");
+        fs_write_string(fd, rightType.name);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNKNOWN_BINARY_OPERATOR) {
+        let tokenKind: i32 = (<I32>list_get_value(args, 0)).value;
+        let leftType: DataType = <DataType>list_get_value(args, 1);
+        let rightType: DataType = <DataType>list_get_value(args, 2);
+
+        fs_write_string(fd, "Unknown binary operator '");
+        fs_write_int(fd, tokenKind);
+        // TODO replace with actually token content
+        fs_write_string(fd, "' for '");
+        fs_write_string(fd, rightType.name);
+        fs_write_string(fd, "' and '");
+        fs_write_string(fd, leftType.name);
+        fs_write_string(fd, "'");
     }
 }
 
