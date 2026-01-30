@@ -1,11 +1,12 @@
 #!/bin/bash
 
 OUTPUT=./output/main.c
-INPUTS=""
+INPUTS=()
 
 for FILE in ./input/*
 do
-    INPUTS=$INPUTS' "'$FILE'"'
+    INPUTS+=("$FILE")
 done
 
-./snapshot/lopc $OUTPUT $INPUTS
+echo ./snapshot/lopc "$OUTPUT" "${INPUTS[@]}"
+./snapshot/lopc "$OUTPUT" "${INPUTS[@]}"
