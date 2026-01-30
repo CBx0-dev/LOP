@@ -74,6 +74,7 @@ func report_expected_token(bag: DiagnosticBag, span: LocationSpan, got: TokenKin
     list_push(args, box_i32(expected));
     
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPECTED_TOKEN, span, args);
+    list_push(bag.list, diagnostic);
 }
 
 func report_expected_token2(bag: DiagnosticBag, span: LocationSpan, got: TokenKind, expected1: TokenKind, expected2: TokenKind): void {
@@ -83,6 +84,7 @@ func report_expected_token2(bag: DiagnosticBag, span: LocationSpan, got: TokenKi
     list_push(args, box_i32(expected2));
     
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPECTED_TOKEN, span, args);
+    list_push(bag.list, diagnostic);
 }
 
 func report_empty_generic(bag: DiagnosticBag, span: LocationSpan): void {
@@ -108,8 +110,16 @@ func report_unknown_dynamic_type(bag: DiagnosticBag, span: LocationSpan, identif
     list_push(bag.list, diagnostic);    
 }
 
+func report_unexpected_token(bag: DiagnosticBag, span: LocationSpan, got: TokenKind): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(got));
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNEXPECTED_TOKEN, span, args);
+    list_push(bag.list, diagnostic);
+}
+
 func report_unknown_type(bag: DiagnosticBag, span: LocationSpan): void {
-    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.SPAN_SIGNATURE, span, list_init());
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_TYPE, span, list_init());
     list_push(bag.list, diagnostic);    
 }
 
@@ -139,7 +149,109 @@ func report_unknown_binary_operator(bag: DiagnosticBag, span: LocationSpan, oper
     list_push(args, rightType);
 
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_BINARY_OPERATOR, span, args);
-    return diagnostic;
+    list_push(bag.list, diagnostic);
+}
+
+func write_token_kind(fd: Object, kind: TokenKind): void {
+    if (kind == TokenKind.ERROR) {
+        fs_write_string(fd, "?");
+    } else if (kind == TokenKind.EOF) {
+        fs_write_string(fd, "<eof>");
+    } else if (kind == TokenKind.WHITESPACE) {
+        fs_write_string(fd, "<whitespace>");
+    } else if (kind == TokenKind.SINGLE_COMMENT) {
+        fs_write_string(fd, "<comment>");
+    } else if (kind == TokenKind.MULTI_COMMENT) {
+        fs_write_string(fd, "<comment>");
+    } else if (kind == TokenKind.IDENTIFIER) {
+        fs_write_string(fd, "<identifier>");
+    } else if (kind == TokenKind.INTEGER_LITERAL) {
+        fs_write_string(fd, "<integer>");
+    } else if (kind == TokenKind.CHAR_LITERAL) {
+        fs_write_string(fd, "<char>");
+    } else if (kind == TokenKind.STRING_LITERAL) {
+        fs_write_string(fd, "<string>");
+    } else if (kind == TokenKind.TYPE_KEYWORD) {
+        fs_write_string(fd, "type");
+    } else if (kind == TokenKind.FUNCTION_KEYWORD) {
+        fs_write_string(fd, "func");
+    } else if (kind == TokenKind.ENUM_KEYWORD) {
+        fs_write_string(fd, "enum");
+    } else if (kind == TokenKind.LET_KEYWORD) {
+        fs_write_string(fd, "let");
+    } else if (kind == TokenKind.NEW_KEYWORD) {
+        fs_write_string(fd, "new");
+    } else if (kind == TokenKind.IF_KEYWORD) {
+        fs_write_string(fd, "if");
+    } else if (kind == TokenKind.ELSE_KEYWORD) {
+        fs_write_string(fd, "else");
+    } else if (kind == TokenKind.WHILE_KEYWORD) {
+        fs_write_string(fd, "while");
+    } else if (kind == TokenKind.RETURN_KEYWORD) {
+        fs_write_string(fd, "return");
+    } else if (kind == TokenKind.TRUE_KEYWORD) {
+        fs_write_string(fd, "true");
+    } else if (kind == TokenKind.FALSE_KEYWORD) {
+        fs_write_string(fd, "false");
+    } else if (kind == TokenKind.EXTERN_KEYWORD) {
+        fs_write_string(fd, "extern");
+    } else if (kind == TokenKind.NULL_KEYWORD) {
+        fs_write_string(fd, "null");
+    } else if (kind == TokenKind.BREAK_KEYWORD) {
+        fs_write_string(fd, "break");
+    } else if (kind == TokenKind.CONTINUE_KEYWORD) {
+        fs_write_string(fd, "continue");
+    } else if (kind == TokenKind.IS_KEYWORD) {
+        fs_write_string(fd, "is");
+    } else if (kind == TokenKind.COLON) {
+        fs_write_string(fd, ":");
+    } else if (kind == TokenKind.LPAREN) {
+        fs_write_string(fd, "(");
+    } else if (kind == TokenKind.RPAREN) {
+        fs_write_string(fd, ")");
+    } else if (kind == TokenKind.LBRACE) {
+        fs_write_string(fd, "{");
+    } else if (kind == TokenKind.RBRACE) {
+        fs_write_string(fd, "}");
+    } else if (kind == TokenKind.SEMICOLON) {
+        fs_write_string(fd, ";");
+    } else if (kind == TokenKind.EQUALS) {
+        fs_write_string(fd, "=");
+    } else if (kind == TokenKind.EQUALS_EQUALS) {
+        fs_write_string(fd, "==");
+    } else if (kind == TokenKind.BANG) {
+        fs_write_string(fd, "!");
+    } else if (kind == TokenKind.BANG_EQUALS) {
+        fs_write_string(fd, "!=");
+    } else if (kind == TokenKind.PLUS) {
+        fs_write_string(fd, "+");
+    } else if (kind == TokenKind.MINUS) {
+        fs_write_string(fd, "-");
+    } else if (kind == TokenKind.STAR) {
+        fs_write_string(fd, "*");
+    } else if (kind == TokenKind.SLASH) {
+        fs_write_string(fd, "/");
+    } else if (kind == TokenKind.AND) {
+        fs_write_string(fd, "&");
+    } else if (kind == TokenKind.AND_AND) {
+        fs_write_string(fd, "&&");
+    } else if (kind == TokenKind.OR) {
+        fs_write_string(fd, "|");
+    } else if (kind == TokenKind.OR_OR) {
+        fs_write_string(fd, "||");
+    } else if (kind == TokenKind.LANGLE) {
+        fs_write_string(fd, "<");
+    } else if (kind == TokenKind.LANGLE_EQUALS) {
+        fs_write_string(fd, "<=");
+    } else if (kind == TokenKind.RANGLE) {
+        fs_write_string(fd, ">");
+    } else if (kind == TokenKind.RANGLE_EQUALS) {
+        fs_write_string(fd, ">=");
+    } else if (kind == TokenKind.COMMA) {
+        fs_write_string(fd, ",");
+    } else if (kind == TokenKind.DOT) {
+        fs_write_string(fd, ".");
+    }
 }
 
 func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: ObjectList): void {
@@ -153,32 +265,28 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
     } else if (code == DiagnosticCode.UNCLOSED_CHAR) {
         fs_write_string(fd, "Unterminated char literal");    
     } else if (code == DiagnosticCode.EXPECTED_TOKEN) {
-        let got: i32 = (<I32>list_get_value(args, 0)).value;
-        let expected: i32 = (<I32>list_get_value(args, 1)).value;
+        let got: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
+        let expected: TokenKind = <TokenKind>(<I32>list_get_value(args, 1)).value;
         
         fs_write_string(fd, "Expected token '");
-        // TODO replace with actually token content
-        fs_write_int(fd, expected);
+        write_token_kind(fd, expected);
         fs_write_string(fd, "'");
 
         if (args.length == 3) {
-            let expected: i32 = (<I32>list_get_value(args, 2)).value;
+            let expected: TokenKind = <TokenKind>(<I32>list_get_value(args, 2)).value;
             fs_write_string(fd, ", or '");
-            // TODO replace with actually token content
-            fs_write_int(fd, expected);
+            write_token_kind(fd, expected);
             fs_write_string(fd, "'");
         }
 
         fs_write_string(fd, ", but got '");
-        // TODO replace with actually token content
-        fs_write_int(fd, got);
+        write_token_kind(fd, got);
         fs_write_string(fd, "'");
     } else if (code == DiagnosticCode.UNEXPECTED_TOKEN) {
-        let got: i32 = (<I32>list_get_value(args, 0)).value;
+        let got: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
         
         fs_write_string(fd, "Unexpected token '");
-        // TODO replace with actually token content
-        fs_write_int(fd, got);
+        write_token_kind(fd, got);
         fs_write_string(fd, "'");
     } else if (code == DiagnosticCode.EMPTY_GENERIC) {
         fs_write_string(fd, "Generic part of a Type cannot be empty");
@@ -199,23 +307,21 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
     } else if (code == DiagnosticCode.NOT_ASSIGNABLE) {
         fs_write_string(fd, "Expression is not assignable");
     } else if (code == DiagnosticCode.UNKNOWN_UNARY_OPERATOR) {
-        let tokenKind: i32 = (<I32>list_get_value(args, 0)).value;
+        let tokenKind: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
         let rightType: DataType = <DataType>list_get_value(args, 1);
 
         fs_write_string(fd, "Unknown unary operator '");
-        fs_write_int(fd, tokenKind);
-        // TODO replace with actually token content
+        write_token_kind(fd, tokenKind);
         fs_write_string(fd, "' for '");
         fs_write_string(fd, rightType.name);
         fs_write_string(fd, "'");
     } else if (code == DiagnosticCode.UNKNOWN_BINARY_OPERATOR) {
-        let tokenKind: i32 = (<I32>list_get_value(args, 0)).value;
+        let tokenKind: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
         let leftType: DataType = <DataType>list_get_value(args, 1);
         let rightType: DataType = <DataType>list_get_value(args, 2);
 
         fs_write_string(fd, "Unknown binary operator '");
-        fs_write_int(fd, tokenKind);
-        // TODO replace with actually token content
+        write_token_kind(fd, tokenKind);
         fs_write_string(fd, "' for '");
         fs_write_string(fd, rightType.name);
         fs_write_string(fd, "' and '");

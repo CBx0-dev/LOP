@@ -833,7 +833,7 @@ func bind_binary_expression(binder: Binder, binaryExpression: BinaryExpression):
         }
     }
 
-    report_unknown_unary_operator(binder.diagnostics, binaryExpression.operator.span, binaryExpression.operator.kind, RETURN_TYPE(left), RETURN_TYPE(right));
+    report_unknown_binary_operator(binder.diagnostics, binaryExpression.operator.span, binaryExpression.operator.kind, RETURN_TYPE(left), RETURN_TYPE(right));
     let node: BoundEmptyExpression = new BoundEmptyExpression();
     
     node.returnType = binder.errorType;
