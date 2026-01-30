@@ -20,6 +20,8 @@ enum DiagnosticCode {
     NOT_ASSIGNABLE,
     UNKNOWN_UNARY_OPERATOR,
     UNKNOWN_BINARY_OPERATOR,
+    NOT_ACCESSABLE,
+    PROPERTY_NOT_FOUND,
 }
 
 type DiagnosticBag {
@@ -149,6 +151,23 @@ func report_unknown_binary_operator(bag: DiagnosticBag, span: LocationSpan, oper
     list_push(args, rightType);
 
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_BINARY_OPERATOR, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_not_accessable(bag: DiagnosticBag, span: LocationSpan, base: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, base);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_ACCESSABLE, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_unkown_property(bag: DiagnosticBag, span: LocationSpan, base: DataType, property: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, base);
+    list_push(args, property);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.PROPERTY_NOT_FOUND, span, args);
     list_push(bag.list, diagnostic);
 }
 
@@ -326,6 +345,21 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
         fs_write_string(fd, rightType.name);
         fs_write_string(fd, "' and '");
         fs_write_string(fd, leftType.name);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.NOT_ACCESSABLE) {
+        let dataType: DataType = <DataType>list_get_value(args, 0);
+
+        fs_write_string(fd, "Type '");
+        fs_write_string(fd, dataType.name);
+        fs_write_string(fd, "' is not accessable");
+    } else if (code == DiagnosticCode.PROPERTY_NOT_FOUND) {
+        let base: DataType = <DataType>list_get_value(args, 0);
+        let property: String = <String>list_get_value(args, 1);
+
+        fs_write_string(fd, "Property '");
+        fs_write_string(fd, property);
+        fs_write_string(fd, "' cannot be found in Type '");
+        fs_write_string(fd, property);
         fs_write_string(fd, "'");
     }
 }

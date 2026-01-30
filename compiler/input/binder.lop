@@ -885,8 +885,11 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
 
     let objectReturnType: DataType = RETURN_TYPE(object);
     if (objectReturnType.definition == null) {
-        // TODO replace with diagnostic
-        PANIC("Cannot access this expression");
+        report_not_accessable(binder.diagnostics, memberExpression.dot.span, objectReturnType);
+
+        let node: BoundEmptyExpression = new BoundEmptyExpression();
+        node.returnType = binder.errorType;
+        return node;
     }
 
     let identifier: String = memberExpression.identifier.value;
@@ -907,8 +910,10 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
             }
         }
 
-        // TODO replace with diagnostic
-        PANIC("Item not found in Type");
+        report_unkown_property(binder.diagnostics, memberExpression.identifier.span, objectReturnType, identifier);
+        let node: BoundEmptyExpression = new BoundEmptyExpression();
+        node.returnType = binder.errorType;
+        return node;
     }
     if (objectReturnType.definition is BoundEnumMember) {
         let definition: BoundEnumMember = <BoundEnumMember>objectReturnType.definition;
@@ -926,13 +931,18 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
             }
         }
 
-        // TODO replace with diagnostic
-        PANIC("Item not found in Enum");
+        report_unkown_property(binder.diagnostics, memberExpression.identifier.span, objectReturnType, identifier);
+        let node: BoundEmptyExpression = new BoundEmptyExpression();
+        node.returnType = binder.errorType;
+        return node;
     }
 
     
-    // TODO replace with diagnostic
-    PANIC("Cannot access this expression");
+    report_not_accessable(binder.diagnostics, memberExpression.dot.span, objectReturnType);
+
+    let node: BoundEmptyExpression = new BoundEmptyExpression();
+    node.returnType = binder.errorType;
+    return node;
 }
 
 func bind_is_expression(binder: Binder, isExpression: IsExpression): BoundIsExpression {
