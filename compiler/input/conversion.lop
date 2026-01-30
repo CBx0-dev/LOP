@@ -84,7 +84,7 @@ func conversion_classify(binder: Binder, from: DataType, to: DataType, explicit:
         list_push(list, rule_init(from, to, ConversionKind.IMPLICIT));
         return list;
     }
-    if (explicit && type_eq_type(from, binder.objectType) && to.definition != null && to.definition is BoundEnumMember) {
+    if (explicit && type_eq_type(from, binder.i32Type) && to.definition != null && to.definition is BoundEnumMember) {
         let list: ObjectList = list_init();
         list_push(list, rule_init(from, to, ConversionKind.EXPLICIT));
         return list;
