@@ -20,8 +20,17 @@ enum DiagnosticCode {
     NOT_ASSIGNABLE,
     UNKNOWN_UNARY_OPERATOR,
     UNKNOWN_BINARY_OPERATOR,
-    NOT_ACCESSABLE,
+    NOT_ACCESSIBLE,
     PROPERTY_NOT_FOUND,
+    EXPRESSION_NOT_CALLABLE,
+    ARGUMENT_COUNT_MISMATCH,
+    CANNOT_USE_IS_WITH_NON_OBJECT,
+    SYMBOL_NOT_FOUND,
+    EXPRESSION_NOT_CASTABLE,
+    CANNOT_RETURN_VALUE_FROM_VOID,
+    MUST_RETURN_VALUE_FROM_NON_VOID,
+    BREAK_NOT_ALLOWED,
+    CONTINUE_NOT_ALLOWED,
 }
 
 type DiagnosticBag {
@@ -154,20 +163,68 @@ func report_unknown_binary_operator(bag: DiagnosticBag, span: LocationSpan, oper
     list_push(bag.list, diagnostic);
 }
 
-func report_not_accessable(bag: DiagnosticBag, span: LocationSpan, base: DataType): void {
+func report_not_accessible(bag: DiagnosticBag, span: LocationSpan, base: DataType): void {
     let args: ObjectList = list_init();
     list_push(args, base);
 
-    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_ACCESSABLE, span, args);
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_ACCESSIBLE, span, args);
     list_push(bag.list, diagnostic);
 }
 
-func report_unkown_property(bag: DiagnosticBag, span: LocationSpan, base: DataType, property: String): void {
+func report_unknown_property(bag: DiagnosticBag, span: LocationSpan, base: DataType, property: String): void {
     let args: ObjectList = list_init();
     list_push(args, base);
     list_push(args, property);
 
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.PROPERTY_NOT_FOUND, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_expression_not_callable(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPRESSION_NOT_CALLABLE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_argument_count_mismatch(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.ARGUMENT_COUNT_MISMATCH, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_cannot_use_is_with_non_object(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.CANNOT_USE_IS_WITH_NON_OBJECT, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_symbol_not_found(bag: DiagnosticBag, span: LocationSpan, identifier: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, identifier);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.SYMBOL_NOT_FOUND, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_expression_not_castable(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPRESSION_NOT_CASTABLE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_cannot_return_value_from_void(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.CANNOT_RETURN_VALUE_FROM_VOID, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_must_return_value_from_non_void(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.MUST_RETURN_VALUE_FROM_NON_VOID, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_break_not_allowed(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.BREAK_NOT_ALLOWED, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_continue_not_allowed(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.CONTINUE_NOT_ALLOWED, span, list_init());
     list_push(bag.list, diagnostic);
 }
 
@@ -346,12 +403,12 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
         fs_write_string(fd, "' and '");
         fs_write_string(fd, leftType.name);
         fs_write_string(fd, "'");
-    } else if (code == DiagnosticCode.NOT_ACCESSABLE) {
+    } else if (code == DiagnosticCode.NOT_ACCESSIBLE) {
         let dataType: DataType = <DataType>list_get_value(args, 0);
 
         fs_write_string(fd, "Type '");
         fs_write_string(fd, dataType.name);
-        fs_write_string(fd, "' is not accessable");
+        fs_write_string(fd, "' is not accessible");
     } else if (code == DiagnosticCode.PROPERTY_NOT_FOUND) {
         let base: DataType = <DataType>list_get_value(args, 0);
         let property: String = <String>list_get_value(args, 1);
@@ -359,8 +416,29 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
         fs_write_string(fd, "Property '");
         fs_write_string(fd, property);
         fs_write_string(fd, "' cannot be found in Type '");
-        fs_write_string(fd, property);
+        fs_write_string(fd, base.name);
         fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.EXPRESSION_NOT_CALLABLE) {
+        fs_write_string(fd, "Expression is not callable");
+    } else if (code == DiagnosticCode.ARGUMENT_COUNT_MISMATCH) {
+        fs_write_string(fd, "Function argument count mismatch");
+    } else if (code == DiagnosticCode.CANNOT_USE_IS_WITH_NON_OBJECT) {
+        fs_write_string(fd, "Cannot use 'is' with non-object type");
+    } else if (code == DiagnosticCode.SYMBOL_NOT_FOUND) {
+        let identifier: String = <String>list_get_value(args, 0);
+        fs_write_string(fd, "Symbol '");
+        fs_write_string(fd, identifier);
+        fs_write_string(fd, "' not found");
+    } else if (code == DiagnosticCode.EXPRESSION_NOT_CASTABLE) {
+        fs_write_string(fd, "Expression is not castable");
+    } else if (code == DiagnosticCode.CANNOT_RETURN_VALUE_FROM_VOID) {
+        fs_write_string(fd, "Cannot return value from void function");
+    } else if (code == DiagnosticCode.MUST_RETURN_VALUE_FROM_NON_VOID) {
+        fs_write_string(fd, "Must return value from non-void function");
+    } else if (code == DiagnosticCode.BREAK_NOT_ALLOWED) {
+        fs_write_string(fd, "Break statements are not allowed here");
+    } else if (code == DiagnosticCode.CONTINUE_NOT_ALLOWED) {
+        fs_write_string(fd, "Continue statements are not allowed here");
     }
 }
 

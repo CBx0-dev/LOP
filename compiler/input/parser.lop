@@ -549,7 +549,7 @@ func parse_base_expression(parser: Parser): Object {
         return parse_null_expression(parser);
     }
 
-    PANIC("(parser) Unknown expression");
+    PANIC("(parser) Unknown expression", parser.diagnostics);
 }
 
 func parse_wrapper_expression(parser: Parser): Object {
@@ -1087,7 +1087,7 @@ func parse_compilation_unit(parser: Parser): CompilationUnit {
             continue;
         }
 
-        PANIC("Unexpected token");
+        PANIC("Unexpected token", parser.diagnostics);
     }
 
     let eof: Token = match_token(parser, TokenKind.EOF);

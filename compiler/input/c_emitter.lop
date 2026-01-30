@@ -63,7 +63,7 @@ func emit_header(emitter: Emitter): void {
 func emit_type(emitter: Emitter, dataType: DataType): void {
     if (string_equals(dataType.name, "Span")) {
         if (dataType.generics == null) {
-            PANIC("Missing generic type");
+            PANIC("Missing generic type", null);
         }
 
         emit_type(emitter, <DataType>list_get_value(dataType.generics, 0));
@@ -101,7 +101,7 @@ func emit_ctor_expression(emitter: Emitter, ctorExpression: BoundCtorExpression)
     let returnType: DataType = RETURN_TYPE(ctorExpression);
     
     if (returnType.definition == null || !(returnType.definition is BoundTypeMember)) {
-        PANIC("Definition must be set");
+        PANIC("Definition must be set", null);
     }
 
     let definition: BoundTypeMember = <BoundTypeMember>returnType.definition;
@@ -314,7 +314,7 @@ func emit_while_statement(emitter: Emitter, whileStatement: BoundWhileStatement)
 
 func emit_return_statement(emitter: Emitter, returnStatement: BoundReturnStatement): void {
     if (emitter.currentFunction == null) {
-        PANIC("Requires current function");
+        PANIC("Requires current function", null);
     }
     if (emitter.currentFunction.requiresGC) {
         writeln_intended(emitter, "GC_FRAME_DESTROY;");
@@ -367,7 +367,7 @@ func emit_statement(emitter: Emitter, statement: Object): void {
 
 func emit_track_func_type(emitter: Emitter, dataType: DataType): void {
     if (dataType.generics == null) {
-        PANIC("Func type must have generic parameters");
+        PANIC("Func type must have generic parameters", null);
     }
 
     write_intended(emitter, "typedef ");
