@@ -1,0 +1,483 @@
+extern func fs_get_stderr(): Object;
+
+enum DiagnosticCode {
+    // Lexer
+    UNEXPECTED_CHAR,
+    UNCLOSED_STRING,
+    UNCLOSED_CHAR,
+
+    // Parser
+    EXPECTED_TOKEN,
+    UNEXPECTED_TOKEN,
+    EMPTY_GENERIC,
+
+    // Binder
+    EMPTY_FUNC_GENERIC,
+    SPAN_SIGNATURE,
+    UNKNOWN_DYNAMIC,
+    UNKNOWN_TYPE,
+    INVALID_CTOR,
+    NOT_ASSIGNABLE,
+    UNKNOWN_UNARY_OPERATOR,
+    UNKNOWN_BINARY_OPERATOR,
+    NOT_ACCESSIBLE,
+    PROPERTY_NOT_FOUND,
+    EXPRESSION_NOT_CALLABLE,
+    ARGUMENT_COUNT_MISMATCH,
+    CANNOT_USE_IS_WITH_NON_OBJECT,
+    SYMBOL_NOT_FOUND,
+    EXPRESSION_NOT_CASTABLE,
+    CANNOT_RETURN_VALUE_FROM_VOID,
+    MUST_RETURN_VALUE_FROM_NON_VOID,
+    BREAK_NOT_ALLOWED,
+    CONTINUE_NOT_ALLOWED,
+    NOT_COMPATIBLE
+}
+
+type DiagnosticBag {
+    list: ObjectList;
+}
+
+type Diagnostic {
+    code: DiagnosticCode;
+    span: LocationSpan;
+    args: ObjectList;
+}
+
+func diagnosticBag_init(): DiagnosticBag {
+    let diagnostics: DiagnosticBag = new DiagnosticBag();
+
+    diagnostics.list = list_init();
+
+    return diagnostics;
+}
+
+func diagnostic_init(code: DiagnosticCode, span: LocationSpan, args: ObjectList): Diagnostic {
+    let diagnostic: Diagnostic = new Diagnostic();
+	
+    diagnostic.code = code;
+	diagnostic.span = span;
+    diagnostic.args = args;
+
+    return diagnostic;
+}
+
+func report_unexpected_char(bag: DiagnosticBag, span: LocationSpan, value: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, value);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNEXPECTED_CHAR, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_unclosed_string(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNCLOSED_STRING, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_unclosed_char(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNCLOSED_CHAR, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_expected_token(bag: DiagnosticBag, span: LocationSpan, got: TokenKind, expected: TokenKind): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(got));
+    list_push(args, box_i32(expected));
+    
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPECTED_TOKEN, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_expected_token2(bag: DiagnosticBag, span: LocationSpan, got: TokenKind, expected1: TokenKind, expected2: TokenKind): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(got));
+    list_push(args, box_i32(expected1));
+    list_push(args, box_i32(expected2));
+    
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPECTED_TOKEN, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_empty_generic(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EMPTY_GENERIC, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_empty_func_generic(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EMPTY_FUNC_GENERIC, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_span_signature(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.SPAN_SIGNATURE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_dynamic_type(bag: DiagnosticBag, span: LocationSpan, identifier: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, identifier);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_DYNAMIC, span, args);
+    list_push(bag.list, diagnostic);    
+}
+
+func report_unexpected_token(bag: DiagnosticBag, span: LocationSpan, got: TokenKind): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(got));
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNEXPECTED_TOKEN, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_type(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_TYPE, span, list_init());
+    list_push(bag.list, diagnostic);    
+}
+
+func report_invalid_ctor_signature(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.INVALID_CTOR, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_not_assignable(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_ASSIGNABLE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_unary_operator(bag: DiagnosticBag, span: LocationSpan, operator: TokenKind, rightType: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(operator));
+    list_push(args, rightType);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_UNARY_OPERATOR, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_binary_operator(bag: DiagnosticBag, span: LocationSpan, operator: TokenKind, leftType: DataType, rightType: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, box_i32(operator));
+    list_push(args, leftType);
+    list_push(args, rightType);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.UNKNOWN_BINARY_OPERATOR, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_not_accessible(bag: DiagnosticBag, span: LocationSpan, base: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, base);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_ACCESSIBLE, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_unknown_property(bag: DiagnosticBag, span: LocationSpan, base: DataType, property: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, base);
+    list_push(args, property);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.PROPERTY_NOT_FOUND, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_expression_not_callable(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPRESSION_NOT_CALLABLE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_argument_count_mismatch(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.ARGUMENT_COUNT_MISMATCH, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_cannot_use_is_with_non_object(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.CANNOT_USE_IS_WITH_NON_OBJECT, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_symbol_not_found(bag: DiagnosticBag, span: LocationSpan, identifier: String): void {
+    let args: ObjectList = list_init();
+    list_push(args, identifier);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.SYMBOL_NOT_FOUND, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func report_expression_not_castable(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.EXPRESSION_NOT_CASTABLE, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_cannot_return_value_from_void(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.CANNOT_RETURN_VALUE_FROM_VOID, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_must_return_value_from_non_void(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.MUST_RETURN_VALUE_FROM_NON_VOID, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_break_not_allowed(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.BREAK_NOT_ALLOWED, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_continue_not_allowed(bag: DiagnosticBag, span: LocationSpan): void {
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.CONTINUE_NOT_ALLOWED, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_not_compatible(bag: DiagnosticBag, span: LocationSpan, from: DataType, to: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, from);
+    list_push(args, to);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_COMPATIBLE, span, args);
+    list_push(bag.list, diagnostic);
+}
+
+func write_token_kind(fd: Object, kind: TokenKind): void {
+    if (kind == TokenKind.ERROR) {
+        fs_write_string(fd, "?");
+    } else if (kind == TokenKind.EOF) {
+        fs_write_string(fd, "<eof>");
+    } else if (kind == TokenKind.WHITESPACE) {
+        fs_write_string(fd, "<whitespace>");
+    } else if (kind == TokenKind.SINGLE_COMMENT) {
+        fs_write_string(fd, "<comment>");
+    } else if (kind == TokenKind.MULTI_COMMENT) {
+        fs_write_string(fd, "<comment>");
+    } else if (kind == TokenKind.IDENTIFIER) {
+        fs_write_string(fd, "<identifier>");
+    } else if (kind == TokenKind.INTEGER_LITERAL) {
+        fs_write_string(fd, "<integer>");
+    } else if (kind == TokenKind.CHAR_LITERAL) {
+        fs_write_string(fd, "<char>");
+    } else if (kind == TokenKind.STRING_LITERAL) {
+        fs_write_string(fd, "<string>");
+    } else if (kind == TokenKind.TYPE_KEYWORD) {
+        fs_write_string(fd, "type");
+    } else if (kind == TokenKind.FUNCTION_KEYWORD) {
+        fs_write_string(fd, "func");
+    } else if (kind == TokenKind.ENUM_KEYWORD) {
+        fs_write_string(fd, "enum");
+    } else if (kind == TokenKind.LET_KEYWORD) {
+        fs_write_string(fd, "let");
+    } else if (kind == TokenKind.NEW_KEYWORD) {
+        fs_write_string(fd, "new");
+    } else if (kind == TokenKind.IF_KEYWORD) {
+        fs_write_string(fd, "if");
+    } else if (kind == TokenKind.ELSE_KEYWORD) {
+        fs_write_string(fd, "else");
+    } else if (kind == TokenKind.WHILE_KEYWORD) {
+        fs_write_string(fd, "while");
+    } else if (kind == TokenKind.RETURN_KEYWORD) {
+        fs_write_string(fd, "return");
+    } else if (kind == TokenKind.TRUE_KEYWORD) {
+        fs_write_string(fd, "true");
+    } else if (kind == TokenKind.FALSE_KEYWORD) {
+        fs_write_string(fd, "false");
+    } else if (kind == TokenKind.EXTERN_KEYWORD) {
+        fs_write_string(fd, "extern");
+    } else if (kind == TokenKind.NULL_KEYWORD) {
+        fs_write_string(fd, "null");
+    } else if (kind == TokenKind.BREAK_KEYWORD) {
+        fs_write_string(fd, "break");
+    } else if (kind == TokenKind.CONTINUE_KEYWORD) {
+        fs_write_string(fd, "continue");
+    } else if (kind == TokenKind.IS_KEYWORD) {
+        fs_write_string(fd, "is");
+    } else if (kind == TokenKind.COLON) {
+        fs_write_string(fd, ":");
+    } else if (kind == TokenKind.LPAREN) {
+        fs_write_string(fd, "(");
+    } else if (kind == TokenKind.RPAREN) {
+        fs_write_string(fd, ")");
+    } else if (kind == TokenKind.LBRACE) {
+        fs_write_string(fd, "{");
+    } else if (kind == TokenKind.RBRACE) {
+        fs_write_string(fd, "}");
+    } else if (kind == TokenKind.SEMICOLON) {
+        fs_write_string(fd, ";");
+    } else if (kind == TokenKind.EQUALS) {
+        fs_write_string(fd, "=");
+    } else if (kind == TokenKind.EQUALS_EQUALS) {
+        fs_write_string(fd, "==");
+    } else if (kind == TokenKind.BANG) {
+        fs_write_string(fd, "!");
+    } else if (kind == TokenKind.BANG_EQUALS) {
+        fs_write_string(fd, "!=");
+    } else if (kind == TokenKind.PLUS) {
+        fs_write_string(fd, "+");
+    } else if (kind == TokenKind.MINUS) {
+        fs_write_string(fd, "-");
+    } else if (kind == TokenKind.STAR) {
+        fs_write_string(fd, "*");
+    } else if (kind == TokenKind.SLASH) {
+        fs_write_string(fd, "/");
+    } else if (kind == TokenKind.AND) {
+        fs_write_string(fd, "&");
+    } else if (kind == TokenKind.AND_AND) {
+        fs_write_string(fd, "&&");
+    } else if (kind == TokenKind.OR) {
+        fs_write_string(fd, "|");
+    } else if (kind == TokenKind.OR_OR) {
+        fs_write_string(fd, "||");
+    } else if (kind == TokenKind.LANGLE) {
+        fs_write_string(fd, "<");
+    } else if (kind == TokenKind.LANGLE_EQUALS) {
+        fs_write_string(fd, "<=");
+    } else if (kind == TokenKind.RANGLE) {
+        fs_write_string(fd, ">");
+    } else if (kind == TokenKind.RANGLE_EQUALS) {
+        fs_write_string(fd, ">=");
+    } else if (kind == TokenKind.COMMA) {
+        fs_write_string(fd, ",");
+    } else if (kind == TokenKind.DOT) {
+        fs_write_string(fd, ".");
+    }
+}
+
+func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: ObjectList): void {
+    if (code == DiagnosticCode.UNEXPECTED_CHAR) {
+        let c: String = <String>list_get_value(args, 0);
+        fs_write_string(fd, "Unexpected character '");
+        fs_write_string(fd, c);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNCLOSED_STRING) {
+        fs_write_string(fd, "Unterminated string literal");    
+    } else if (code == DiagnosticCode.UNCLOSED_CHAR) {
+        fs_write_string(fd, "Unterminated char literal");    
+    } else if (code == DiagnosticCode.EXPECTED_TOKEN) {
+        let got: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
+        let expected: TokenKind = <TokenKind>(<I32>list_get_value(args, 1)).value;
+        
+        fs_write_string(fd, "Expected token '");
+        write_token_kind(fd, expected);
+        fs_write_string(fd, "'");
+
+        if (args.length == 3) {
+            let expected: TokenKind = <TokenKind>(<I32>list_get_value(args, 2)).value;
+            fs_write_string(fd, ", or '");
+            write_token_kind(fd, expected);
+            fs_write_string(fd, "'");
+        }
+
+        fs_write_string(fd, ", but got '");
+        write_token_kind(fd, got);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNEXPECTED_TOKEN) {
+        let got: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
+        
+        fs_write_string(fd, "Unexpected token '");
+        write_token_kind(fd, got);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.EMPTY_GENERIC) {
+        fs_write_string(fd, "Generic part of a Type cannot be empty");
+    } else if (code == DiagnosticCode.EMPTY_FUNC_GENERIC) {
+        fs_write_string(fd, "'Func' Type must have at least one generic");
+    } else if (code == DiagnosticCode.SPAN_SIGNATURE) {
+        fs_write_string(fd, "'Span' Must have exactly one generic");
+    } else if (code == DiagnosticCode.UNKNOWN_DYNAMIC) {
+        let c: String = <String>list_get_value(args, 0);
+        
+        fs_write_string(fd, "Unkown dynamic type '");
+        fs_write_string(fd, c);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNKNOWN_TYPE) {
+        fs_write_string(fd, "Unknown Type");
+    } else if (code == DiagnosticCode.INVALID_CTOR) {
+        fs_write_string(fd, "The Type cannot be instantiated");
+    } else if (code == DiagnosticCode.NOT_ASSIGNABLE) {
+        fs_write_string(fd, "Expression is not assignable");
+    } else if (code == DiagnosticCode.UNKNOWN_UNARY_OPERATOR) {
+        let tokenKind: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
+        let rightType: DataType = <DataType>list_get_value(args, 1);
+
+        fs_write_string(fd, "Unknown unary operator '");
+        write_token_kind(fd, tokenKind);
+        fs_write_string(fd, "' for '");
+        fs_write_string(fd, rightType.name);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.UNKNOWN_BINARY_OPERATOR) {
+        let tokenKind: TokenKind = <TokenKind>(<I32>list_get_value(args, 0)).value;
+        let leftType: DataType = <DataType>list_get_value(args, 1);
+        let rightType: DataType = <DataType>list_get_value(args, 2);
+
+        fs_write_string(fd, "Unknown binary operator '");
+        write_token_kind(fd, tokenKind);
+        fs_write_string(fd, "' for '");
+        fs_write_string(fd, rightType.name);
+        fs_write_string(fd, "' and '");
+        fs_write_string(fd, leftType.name);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.NOT_ACCESSIBLE) {
+        let dataType: DataType = <DataType>list_get_value(args, 0);
+
+        fs_write_string(fd, "Type '");
+        fs_write_string(fd, dataType.name);
+        fs_write_string(fd, "' is not accessible");
+    } else if (code == DiagnosticCode.PROPERTY_NOT_FOUND) {
+        let base: DataType = <DataType>list_get_value(args, 0);
+        let property: String = <String>list_get_value(args, 1);
+
+        fs_write_string(fd, "Property '");
+        fs_write_string(fd, property);
+        fs_write_string(fd, "' cannot be found in Type '");
+        fs_write_string(fd, base.name);
+        fs_write_string(fd, "'");
+    } else if (code == DiagnosticCode.EXPRESSION_NOT_CALLABLE) {
+        fs_write_string(fd, "Expression is not callable");
+    } else if (code == DiagnosticCode.ARGUMENT_COUNT_MISMATCH) {
+        fs_write_string(fd, "Function argument count mismatch");
+    } else if (code == DiagnosticCode.CANNOT_USE_IS_WITH_NON_OBJECT) {
+        fs_write_string(fd, "Cannot use 'is' with non-object type");
+    } else if (code == DiagnosticCode.SYMBOL_NOT_FOUND) {
+        let identifier: String = <String>list_get_value(args, 0);
+        fs_write_string(fd, "Symbol '");
+        fs_write_string(fd, identifier);
+        fs_write_string(fd, "' not found");
+    } else if (code == DiagnosticCode.EXPRESSION_NOT_CASTABLE) {
+        fs_write_string(fd, "Expression is not castable");
+    } else if (code == DiagnosticCode.CANNOT_RETURN_VALUE_FROM_VOID) {
+        fs_write_string(fd, "Cannot return value from void function");
+    } else if (code == DiagnosticCode.MUST_RETURN_VALUE_FROM_NON_VOID) {
+        fs_write_string(fd, "Must return value from non-void function");
+    } else if (code == DiagnosticCode.BREAK_NOT_ALLOWED) {
+        fs_write_string(fd, "Break statements are not allowed here");
+    } else if (code == DiagnosticCode.CONTINUE_NOT_ALLOWED) {
+        fs_write_string(fd, "Continue statements are not allowed here");
+    }
+}
+
+func diagnostic_print_single(fd: Object, diagnostic: Diagnostic): void {
+    let code: DiagnosticCode = diagnostic.code;
+    let span: LocationSpan = diagnostic.span;
+    let args: ObjectList = diagnostic.args;
+
+    fs_write_string(fd, span.filename);
+    fs_write_string(fd, "(");
+    fs_write_int(fd, span.startLine);
+    fs_write_string(fd, ":");
+    fs_write_int(fd, span.startCol);
+    fs_write_string(fd, ") [");
+    fs_write_string(fd, "LOP");
+    fs_write_int(fd, code);
+    fs_write_string(fd, "]: ");
+
+    diagnostic_print_code_message(fd, code, args);    
+
+    fs_write_string(fd, "\n");
+}
+
+func diagnostic_print(diagnostics: DiagnosticBag): void {
+    let fd: Object = fs_get_stderr();
+    let iter: ObjectListIterator = list_iterator(diagnostics.list);
+    
+    while (list_iterator_has_next(iter)) {
+        let diagnostic: Diagnostic = <Diagnostic>list_iterator_next(iter);
+        diagnostic_print_single(fd, diagnostic);
+    }
+}

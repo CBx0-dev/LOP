@@ -24,24 +24,41 @@ func entry(args: ObjectList): i32 {
     }
 
     let output: String = <String>list_iterator_next(iter);
+	let diagnostics: DiagnosticBag = diagnosticBag_init();
     
     let units: ObjectList = list_init();
     while (list_iterator_has_next(iter)) {
         let file: String = <String>list_iterator_next(iter);
 
         let content: String = fs_read_file(file);
-        let parser: Parser = parser_init(file, content);
-        let unit: CompilationUnit = parse_compilation_unit(parser);
-
+		let diagnosticCount: i32 = diagnostics.list.length;
+        let parser: Parser = parser_init(diagnostics, file, content);
+        
+		if (diagnosticCount != diagnostics.list.length) {
+			continue;
+		}
+		
+		let unit: CompilationUnit = parse_compilation_unit(parser);
+		
         list_push(units, unit);
+    }
+
+    if (diagnostics.list.length > 0) {
+        diagnostic_print(diagnostics);
+        return 1;
     }
 
     if (units.length == 0) {
         return 1;
     }
 
-    let binder: Binder = binder_init(units);
+    let binder: Binder = binder_init(diagnostics, units);
     let program: BoundProgram = binder_bind(binder);
+
+    if (diagnostics.list.length > 0) {
+        diagnostic_print(diagnostics);
+        return 1;
+    }
 
     let outputFile: Object = fs_open_file(output);
 

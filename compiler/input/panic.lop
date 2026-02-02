@@ -1,6 +1,10 @@
 extern func exit(code: i32): void;
 
-func PANIC(message: String): void {
+func PANIC(message: String, diagnostics: DiagnosticBag): void {
+    if (diagnostics != null) {
+        diagnostic_print(diagnostics);
+    }
+
     string_dump(message);
     exit(1);
 }
