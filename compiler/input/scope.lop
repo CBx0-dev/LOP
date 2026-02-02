@@ -39,7 +39,7 @@ func scope_lookup_type(scope: Scope, name: String, generics: ObjectList): DataTy
         }
     }
 
-    if (scope.parent != null) {
+    if (!(scope.parent is null)) {
         return scope_lookup_type(scope.parent, name, generics);
     }
 
@@ -62,7 +62,7 @@ func scope_lookup_variable(scope: Scope, name: String): Variable {
         }
     }
 
-    if (scope.parent != null) {
+    if (!(scope.parent is null)) {
         return scope_lookup_variable(scope.parent, name);
     }
 
@@ -85,7 +85,7 @@ func scope_lookup_function(scope: Scope, name: String): BoundFunctionMember {
         }
     }
 
-    if (scope.parent != null) {
+    if (!(scope.parent is null)) {
         return scope_lookup_function(scope.parent, name);
     }
 

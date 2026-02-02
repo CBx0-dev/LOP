@@ -34,7 +34,7 @@ func list_push(list: ObjectList, value: Object): void {
     
     list.length = list.length + 1;
 
-    if (list.first == null && list.last == null) {
+    if (list.first is null && list.last is null) {
         list.first = item;
         list.last = item;
         return;
@@ -54,7 +54,7 @@ func list_unshift(list: ObjectList, value: Object): void {
 
     list.length = list.length + 1;
 
-    if (list.first == null && list.last == null) {
+    if (list.first is null && list.last is null) {
         list.first = item;
         list.last = item;
         return;
@@ -67,7 +67,7 @@ func list_unshift(list: ObjectList, value: Object): void {
 }
 
 func list_pop(list: ObjectList): Object {
-    if (list.last == null) {
+    if (list.last is null) {
         return null;
     }
 
@@ -81,7 +81,7 @@ func list_pop(list: ObjectList): Object {
 }
 
 func list_shift(list: ObjectList): Object {
-    if (list.first == null) {
+    if (list.first is null) {
         return null;
     }
 
@@ -155,7 +155,7 @@ func list_iterator_has_next(iterator: ObjectListIterator): bool {
 
 func list_iterator_next(iterator: ObjectListIterator): Object {
     let value: Object = null;
-    if (iterator.current != null) {
+    if (!(iterator.current is null)) {
         value = iterator.current.value;
         iterator.current = iterator.current.next;
     }
