@@ -26,6 +26,9 @@ enum TokenKind {
     BREAK_KEYWORD,
     CONTINUE_KEYWORD,
     IS_KEYWORD,
+    IMPORT_KEYWORD,
+    FROM_KEYWORD,
+    EXPORT_KEYWORD,
 
     COLON,
     LPAREN,
@@ -208,6 +211,12 @@ func lex_identifier(lexer: Lexer): Token {
         kind = TokenKind.CONTINUE_KEYWORD;
     } else if (string_equals(value, "is")) {
         kind = TokenKind.IS_KEYWORD;
+    } else if (string_equals(value, "import")) {
+        kind = TokenKind.IMPORT_KEYWORD;
+    } else if (string_equals(value, "from")) {
+        kind = TokenKind.FROM_KEYWORD;
+    } else if (string_equals(value, "export")) {
+        kind = TokenKind.EXPORT_KEYWORD;
     }
     
     let span: LocationSpan = locationSpan_init(lexer.filename, startPos, lexer.position, startLine, lexer.currentLine, startCol, lexer.currentCol);

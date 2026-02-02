@@ -289,6 +289,12 @@ func write_token_kind(fd: Object, kind: TokenKind): void {
         fs_write_string(fd, "continue");
     } else if (kind == TokenKind.IS_KEYWORD) {
         fs_write_string(fd, "is");
+    } else if (kind == TokenKind.IMPORT_KEYWORD) {
+        fs_write_string(fd, "import");
+    } else if (kind == TokenKind.FROM_KEYWORD) {
+        fs_write_string(fd, "from");
+    } else if (kind == TokenKind.EXPORT_KEYWORD) {
+        fs_write_string(fd, "export");
     } else if (kind == TokenKind.COLON) {
         fs_write_string(fd, ":");
     } else if (kind == TokenKind.LPAREN) {
