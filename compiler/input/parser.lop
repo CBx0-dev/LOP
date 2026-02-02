@@ -1,7 +1,7 @@
 type Parser {
     diagnostics: DiagnosticBag;
     tokens: ObjectList;
-    position: i32;
+    iterator: ObjectListIterator;
 }
 
 type CompilationUnit {
@@ -259,8 +259,8 @@ func parser_init(diagnostics: DiagnosticBag, filename: String, content: String):
             token.kind != TokenKind.WHITESPACE &&
             token.kind != TokenKind.SINGLE_COMMENT &&
             token.kind != TokenKind.MULTI_COMMENT) {
-                list_push(tokens, token);
-            }
+            list_push(tokens, token);
+        }
         token = lexer_next_token(lexer);
     }
 
@@ -272,12 +272,13 @@ func parser_init(diagnostics: DiagnosticBag, filename: String, content: String):
     // TODO activate GC
     // gc_mark_sweep();
 
+    let iterator: ObjectListIterator = list_iterator(tokens);
     let parser: Parser = new Parser();
     
     parser.diagnostics = diagnostics;
     parser.tokens = tokens;
-    parser.position = 0;
-
+    parser.iterator = iterator;
+    
     return parser;
 }
 
@@ -290,55 +291,55 @@ func span_merge(a: LocationSpan, b: LocationSpan): LocationSpan {
 }
 
 func current_token(parser: Parser): Token {
-    if (parser.position >= parser.tokens.length) {
-        return <Token>list_get_value(parser.tokens, parser.tokens.length - 1);
+    if (parser_is_eof(parser)) {
+        return <Token>parser.tokens.last.value;
     }
 
-    return <Token>list_get_value(parser.tokens, parser.position);
+    return <Token>parser.iterator.current.value;
 }
 
 func peek_token(parser: Parser): Token {
-    if (parser.position + 1 >= parser.tokens.length) {
-        return <Token>list_get_value(parser.tokens, parser.tokens.length - 1);
+    if (parser_is_eof(parser)) {
+        return <Token>parser.tokens.last.value;
     }
 
-    return <Token>list_get_value(parser.tokens, parser.position + 1);
+    return <Token>parser.iterator.current.next.value;
 }
 
 func next_token(parser: Parser): Token {
-    let curr: Token = current_token(parser);
+    if (parser_is_eof(parser)) {
+        return <Token>parser.tokens.last.value;
+    }
     
-    parser.position = parser.position + 1;
-
-    return curr;
+    return <Token>list_iterator_next(parser.iterator);
 }
 
 func match_token(parser: Parser, kind: TokenKind): Token {
     let curr: Token = current_token(parser);
     if (curr.kind != kind) {
         report_expected_token(parser.diagnostics, curr.span, curr.kind, kind);
-        parser.position = parser.position + 1;
+        
+        next_token(parser);
         return token_init(kind, curr.value, curr.span);
     }
 
-    parser.position = parser.position + 1;
-    return curr;
+    return next_token(parser);
 }
 
 func match_token2(parser: Parser, kind1: TokenKind, kind2: TokenKind): Token {
     let curr: Token = current_token(parser);
     if (curr.kind != kind1 && curr.kind != kind2) {
         report_expected_token2(parser.diagnostics, curr.span, curr.kind, kind1, kind2);
-        parser.position = parser.position + 1;
+        
+        next_token(parser);
         return token_init(kind1, curr.value, curr.span);
     }
 
-    parser.position = parser.position + 1;
-    return curr;
+    return next_token(parser);
 }
 
 func parser_is_eof(parser: Parser): bool {
-    return parser.position >= parser.tokens.length;
+    return parser.iterator.index >= parser.tokens.length;
 }
 
 func unary_operator_precedence(operator: TokenKind): i32 {
