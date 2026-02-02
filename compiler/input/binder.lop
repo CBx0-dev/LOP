@@ -181,6 +181,11 @@ type BoundIsExpression {
     targetType: DataType;
 }
 
+type BoundIsNullExpression {
+    returnType: DataType;
+    left: Object;
+}
+
 type BoundEnumFieldExpression {
     returnType: DataType;
     name: String;
@@ -953,7 +958,7 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
 func bind_is_expression(binder: Binder, isExpression: IsExpression): Object {
     let left: Object = bind_expression(binder, isExpression.left, null);
     if (RETURN_TYPE(left).kind != DataTypeKind.OBJECT) {
-        report_cannot_use_is_with_non_object(binder.diagnostics, isExpression.typeSignature.span);
+        report_cannot_use_is_with_non_object(binder.diagnostics, LOCATION_SPAN(isExpression.left));
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -971,6 +976,24 @@ func bind_is_expression(binder: Binder, isExpression: IsExpression): Object {
     node.returnType = binder.boolType;
     node.left = left;
     node.targetType = targetType;
+
+    return node;
+}
+
+func bind_is_null_expression(binder: Binder, isNullExpression: IsNullExpression): Object {
+    let left: Object = bind_expression(binder, isNullExpression.left, null);
+    if (RETURN_TYPE(left).kind != DataTypeKind.OBJECT) {
+        report_cannot_use_is_with_non_object(binder.diagnostics, LOCATION_SPAN(isNullExpression.left));
+
+        let node: BoundEmptyExpression = new BoundEmptyExpression();
+        node.returnType = binder.errorType;
+        return node;
+    }
+
+    let node: BoundIsNullExpression = new BoundIsNullExpression();
+
+    node.returnType = binder.boolType;
+    node.left = left;
 
     return node;
 }
@@ -1147,6 +1170,9 @@ func bind_expression_internal(binder: Binder, expression: Object): Object {
     }
     if (expression is IsExpression) {
         return bind_is_expression(binder, <IsExpression>expression);
+    }
+    if (expression is IsNullExpression) {
+        return bind_is_null_expression(binder, <IsNullExpression>expression);
     }
     if (expression is LiteralExpression) {
         return bind_literal_expression(binder, <LiteralExpression>expression);

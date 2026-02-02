@@ -200,6 +200,11 @@ func emit_is_expression(emitter: Emitter, isExpression: BoundIsExpression): void
     write(emitter, "_type");
 }
 
+func emit_is_null_expression(emitter: Emitter, isNullExpression: BoundIsNullExpression): void {
+    emit_expression(emitter, isNullExpression.left);
+    write(emitter, " == NULL");
+}
+
 func emit_enum_field_expression(emitter: Emitter, enumFieldExpression: BoundEnumFieldExpression): void {
     write(emitter, enumFieldExpression.name);
     write(emitter, "_");
@@ -262,6 +267,8 @@ func emit_expression(emitter: Emitter, expression: Object): void {
         emit_member_expression(emitter, <BoundMemberExpression>expression);
     } else if (expression is BoundIsExpression) {
         emit_is_expression(emitter, <BoundIsExpression>expression);
+    } else if (expression is BoundIsNullExpression) {
+        emit_is_null_expression(emitter, <BoundIsNullExpression>expression);
     } else if (expression is BoundEnumFieldExpression) {
         emit_enum_field_expression(emitter, <BoundEnumFieldExpression>expression);
     } else if (expression is BoundIntegerExpression) {
