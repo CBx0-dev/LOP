@@ -198,6 +198,13 @@ type IsExpression {
     typeSignature: TypeSignature;
 }
 
+type IsNullExpression {
+    span: LocationSpan;
+    left: Object;
+    keyword: Token;
+    nil: Token;
+}
+
 type LiteralExpression {
     span: LocationSpan;
     value: Token;
@@ -660,6 +667,20 @@ func parse_wrapper_expression(parser: Parser): Object {
 
         if (current_token(parser).kind == TokenKind.IS_KEYWORD) {
             let keyword: Token = next_token(parser);
+            if (current_token(parser).kind == TokenKind.NULL_KEYWORD) {
+                let nil: Token = next_token(parser);
+
+                let isNullExpression: IsNullExpression = new IsNullExpression();
+                
+                isNullExpression.span = span_merge(LOCATION_SPAN(left), nil.span);
+                isNullExpression.left = left;
+                isNullExpression.keyword = keyword;
+                isNullExpression.nil = nil;
+
+                left = isNullExpression;
+                continue;
+            }
+
             let typeSignature: TypeSignature = parse_type_signature(parser);
 
             let isExpression: IsExpression = new IsExpression();

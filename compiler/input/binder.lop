@@ -181,6 +181,11 @@ type BoundIsExpression {
     targetType: DataType;
 }
 
+type BoundIsNullExpression {
+    returnType: DataType;
+    left: Object;
+}
+
 type BoundEnumFieldExpression {
     returnType: DataType;
     name: String;
@@ -294,12 +299,12 @@ func type_eq_type(left: DataType, right: DataType): bool {
         return false;
     }
 
-    if (left.generics == null && right.generics != null ||
-        left.generics != null && right.generics == null) {
+    if (left.generics is null && !(right.generics is null) ||
+        !(left.generics is null) && right.generics is null) {
         return false;
     }
 
-    if (left.generics == null && right.generics == null) {
+    if (left.generics is null && right.generics is null) {
         return true;
     }
 
@@ -326,12 +331,12 @@ func type_eq_def(left: DataType, name: String, generics: ObjectList): bool {
         return false;
     }
 
-    if (left.generics == null && generics != null ||
-        left.generics != null && generics == null) {
+    if (left.generics is null && !(generics is null) ||
+        !(left.generics is null) && generics is null) {
         return false;
     }
 
-    if (left.generics == null && generics == null) {
+    if (left.generics is null && generics is null) {
         return true;
     }
 
@@ -591,7 +596,7 @@ func bind_type_signature_dynamic_func(binder: Binder, span: LocationSpan, dynami
     }
 
     let dataType: DataType = scope_lookup_type(binder.currentScope, "Func", generics);
-    if (dataType == null) {
+    if (dataType is null) {
         let cName: String = generate_func_cName(generics);
         dataType = type_init_dynamic(DataTypeKind.PRIMITIVE, "Func", cName, generics);
 
@@ -614,7 +619,7 @@ func bind_type_signature_dynamic_span(binder: Binder, span: LocationSpan, dynami
     list_push(generics, generic);
 
     let dataType: DataType = scope_lookup_type(binder.currentScope, "Span", generics);
-    if (dataType == null) {
+    if (dataType is null) {
         let cName: String = string_concat("Span_", generic.cName);
         dataType = type_init_dynamic(DataTypeKind.OBJECT, "Span", cName, generics);
         scope_declare_type(binder.rootScope, dataType);
@@ -637,7 +642,7 @@ func bind_type_signature_dynamic(binder: Binder, signature: TypeSignature, dynam
 }
 
 func bind_type_signature(binder: Binder, signature: TypeSignature, allowVoid: bool): DataType {
-    if (signature.dynamic != null) {
+    if (!(signature.dynamic is null)) {
         return bind_type_signature_dynamic(binder, signature, signature.dynamic);
     }
 
@@ -646,7 +651,7 @@ func bind_type_signature(binder: Binder, signature: TypeSignature, allowVoid: bo
     }
 
     let dataType: DataType = scope_lookup_type(binder.currentScope, signature.identifier.value, null);
-    if (dataType == null) {
+    if (dataType is null) {
         report_unknown_type(binder.diagnostics, signature.identifier.span);
         return binder.errorType;
     }
@@ -727,7 +732,7 @@ func bind_unary_expression(binder: Binder, unaryExpression: UnaryExpression): Ob
     let right: Object = bind_expression(binder, unaryExpression.right, null);
     let operator: BoundUnaryOperator = lookup_unary_operator(binder, unaryExpression.operator.kind, RETURN_TYPE(right));
 
-    if (operator != null) {
+    if (!(operator is null)) {
         let node: BoundUnaryExpression = new BoundUnaryExpression();
 
         node.returnType = operator.returnType;
@@ -743,7 +748,7 @@ func bind_unary_expression(binder: Binder, unaryExpression: UnaryExpression): Ob
         let operator: BoundUnaryOperator = <BoundUnaryOperator>list_iterator_next(iter);
         let rightConversion: ObjectList = conversion_classify(binder, RETURN_TYPE(right), operator.right, false);
 
-        if (rightConversion != null) {
+        if (!(rightConversion is null)) {
             right = bind_conversion(right, rightConversion);
 
             let node: BoundUnaryExpression = new BoundUnaryExpression();
@@ -778,25 +783,10 @@ func lookup_binary_operator(binder: Binder, tokenKind: TokenKind, leftType: Data
 
 func bind_binary_expression(binder: Binder, binaryExpression: BinaryExpression): Object {
     let left: Object = bind_expression(binder, binaryExpression.left, null);
-    let right: Object = bind_expression(binder, binaryExpression.right, null);
-
-    if (binaryExpression.operator.kind == TokenKind.EQUALS_EQUALS || 
-        binaryExpression.operator.kind == TokenKind.BANG_EQUALS) {
-        if (left is BoundNullExpression && right is BoundNullExpression) {
-            PANIC("Cannot compare null with null", binder.diagnostics);
-        }
-
-        if (left is BoundNullExpression && !(right is BoundNullExpression)) {
-            // TODO Can be replace by setting returnType directly with the of right
-            left = bind_expression(binder, binaryExpression.left, RETURN_TYPE(right));
-        } else if (right is BoundNullExpression && !(left is BoundNullExpression)) {
-            // TODO Can be replace by setting returnType directly with the of left
-            right = bind_expression(binder, binaryExpression.right, RETURN_TYPE(right));
-        }
-    }
+    let right: Object = bind_expression(binder, binaryExpression.right, null); 
 
     let operator: BoundBinaryOperator = lookup_binary_operator(binder, binaryExpression.operator.kind, RETURN_TYPE(left), RETURN_TYPE(right));
-    if (operator != null) {
+    if (!(operator is null)) {
         let node: BoundBinaryExpression = new BoundBinaryExpression();
         
         node.returnType = operator.returnType;
@@ -818,7 +808,7 @@ func bind_binary_expression(binder: Binder, binaryExpression: BinaryExpression):
         let leftConversion: ObjectList = conversion_classify(binder, RETURN_TYPE(left), operator.left, false);
         let rightConversion: ObjectList = conversion_classify(binder, RETURN_TYPE(right), operator.right, false);
 
-        if (leftConversion != null && rightConversion != null) {
+        if (!(leftConversion is null) && !(rightConversion is null)) {
             left = bind_conversion(left, leftConversion);
             right = bind_conversion(right, leftConversion);
 
@@ -850,7 +840,7 @@ func bind_call_expression(binder: Binder, callExpression: CallExpression): Objec
         node.returnType = binder.errorType;
         return node;
     }
-    if (calleeReturnType.generics == null) {
+    if (calleeReturnType.generics is null) {
         PANIC("Function requires generics", binder.diagnostics);
     }
 
@@ -889,7 +879,7 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
     binder.flags.allowEnumIdentifiers = oldEnumIdentifier;
 
     let objectReturnType: DataType = RETURN_TYPE(object);
-    if (objectReturnType.definition == null) {
+    if (objectReturnType.definition is null) {
         report_not_accessible(binder.diagnostics, LOCATION_SPAN(memberExpression.object), objectReturnType);
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
@@ -953,7 +943,7 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
 func bind_is_expression(binder: Binder, isExpression: IsExpression): Object {
     let left: Object = bind_expression(binder, isExpression.left, null);
     if (RETURN_TYPE(left).kind != DataTypeKind.OBJECT) {
-        report_cannot_use_is_with_non_object(binder.diagnostics, isExpression.typeSignature.span);
+        report_cannot_use_is_with_non_object(binder.diagnostics, LOCATION_SPAN(isExpression.left));
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -971,6 +961,24 @@ func bind_is_expression(binder: Binder, isExpression: IsExpression): Object {
     node.returnType = binder.boolType;
     node.left = left;
     node.targetType = targetType;
+
+    return node;
+}
+
+func bind_is_null_expression(binder: Binder, isNullExpression: IsNullExpression): Object {
+    let left: Object = bind_expression(binder, isNullExpression.left, null);
+    if (RETURN_TYPE(left).kind != DataTypeKind.OBJECT) {
+        report_cannot_use_is_with_non_object(binder.diagnostics, LOCATION_SPAN(isNullExpression.left));
+
+        let node: BoundEmptyExpression = new BoundEmptyExpression();
+        node.returnType = binder.errorType;
+        return node;
+    }
+
+    let node: BoundIsNullExpression = new BoundIsNullExpression();
+
+    node.returnType = binder.boolType;
+    node.left = left;
 
     return node;
 }
@@ -996,7 +1004,7 @@ func bind_literal_expression(binder: Binder, literalExpression: LiteralExpressio
 
     if (literalExpression.value.kind == TokenKind.STRING_LITERAL) {
         let stringType: DataType = scope_lookup_type(binder.currentScope, "String", null);
-        if (stringType == null) {
+        if (stringType is null) {
             PANIC("Cannot find string type", binder.diagnostics);
         }
 
@@ -1035,7 +1043,7 @@ func bind_literal_expression(binder: Binder, literalExpression: LiteralExpressio
 func bind_identifier_expression(binder: Binder, literalExpression: LiteralExpression): Object {
     {
         let variable: Variable = scope_lookup_variable(binder.currentScope, literalExpression.value.value);
-        if (variable != null) {
+        if (!(variable is null)) {
             let node: BoundVariableExpression = new BoundVariableExpression();
 
             node.returnType = variable.dataType;
@@ -1047,7 +1055,7 @@ func bind_identifier_expression(binder: Binder, literalExpression: LiteralExpres
 
     {
         let function: BoundFunctionMember = scope_lookup_function(binder.currentScope, literalExpression.value.value);
-        if (function != null) {
+        if (!(function is null)) {
             let node: BoundFunctionExpression = new BoundFunctionExpression();
 
             node.returnType = function.functionSignature;
@@ -1059,7 +1067,7 @@ func bind_identifier_expression(binder: Binder, literalExpression: LiteralExpres
 
     if (binder.flags.allowEnumIdentifiers) {
         let dataType: DataType = scope_lookup_type(binder.currentScope, literalExpression.value.value, null);
-        if (dataType != null && dataType.definition != null && dataType.definition is BoundEnumMember) {
+        if (!(dataType is null) && !(dataType.definition is null) && dataType.definition is BoundEnumMember) {
             let node: BoundEnumExpression = new BoundEnumExpression();
 
             node.returnType = dataType;
@@ -1092,7 +1100,7 @@ func bind_cast_expression(binder: Binder, castExpression: CastExpression): Objec
     let expression: Object = bind_expression(binder, castExpression.expression, null);
 
     let conversions: ObjectList = conversion_classify(binder, RETURN_TYPE(expression), targetType, true);
-    if (conversions == null) {
+    if (conversions is null) {
         report_expression_not_castable(binder.diagnostics, LOCATION_SPAN(castExpression.expression));
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
@@ -1148,6 +1156,9 @@ func bind_expression_internal(binder: Binder, expression: Object): Object {
     if (expression is IsExpression) {
         return bind_is_expression(binder, <IsExpression>expression);
     }
+    if (expression is IsNullExpression) {
+        return bind_is_null_expression(binder, <IsNullExpression>expression);
+    }
     if (expression is LiteralExpression) {
         return bind_literal_expression(binder, <LiteralExpression>expression);
     }
@@ -1165,12 +1176,12 @@ func bind_expression(binder: Binder, expression: Object, expectedType: DataType)
     let boundExpression: Object = bind_expression_internal(binder, expression);
 
     if (boundExpression is BoundNullExpression) {
-        if (expectedType == null) {
-            return boundExpression;
+        if (expectedType is null) {
+            PANIC("(binder) Cannot assign null to unexpected expression", binder.diagnostics);
         }
 
         if (expectedType.kind != DataTypeKind.OBJECT) {
-            PANIC("(binder) Cannot assign null to unexpected expression", binder.diagnostics);
+            PANIC("(binder) Cannot assign null to non-object type", binder.diagnostics);    
         }
 
         SET_RETURN_TYPE(boundExpression, expectedType);
@@ -1178,9 +1189,9 @@ func bind_expression(binder: Binder, expression: Object, expectedType: DataType)
 
     let expressionType: DataType = RETURN_TYPE(boundExpression);
 
-    if (expectedType != null && !type_eq_type(RETURN_TYPE(boundExpression), expectedType)) {
+    if (!(expectedType is null) && !type_eq_type(RETURN_TYPE(boundExpression), expectedType)) {
         let conversions: ObjectList = conversion_classify(binder, expressionType, expectedType, false);
-        if (conversions == null || conversions.length == 0) {
+        if (conversions is null || conversions.length == 0) {
             report_not_compatible(binder.diagnostics, LOCATION_SPAN(expression), expressionType, expectedType);
             
             let node: BoundEmptyExpression = new BoundEmptyExpression();
@@ -1214,7 +1225,7 @@ func bind_block_statement(binder: Binder, blockStatement: BlockStatement): Bound
 }
 
 func bind_variable_statement(binder: Binder, variableStatement: VariableStatement): Object {
-    if (binder.currentFunction == null) {
+    if (binder.currentFunction is null) {
         PANIC("Missing current function context", binder.diagnostics);
     }
 
@@ -1225,7 +1236,7 @@ func bind_variable_statement(binder: Binder, variableStatement: VariableStatemen
 
     let initializer: Object = null;
     
-    if (variableStatement.initializer != null) {
+    if (!(variableStatement.initializer is null)) {
         let right: Object = bind_expression(binder, variableStatement.initializer, dataType);
 
         let variableExpression: BoundVariableExpression = new BoundVariableExpression();
@@ -1258,7 +1269,7 @@ func bind_if_statement(binder: Binder, ifStatement: IfStatement): BoundIfStateme
     let thenCase: Object = bind_statement(binder, ifStatement.thenCase);
 
     let elseCase: Object = null;
-    if (ifStatement.elseCase != null) {
+    if (!(ifStatement.elseCase is null)) {
         elseCase = bind_statement(binder, ifStatement.elseCase.thenCase);
     }
 
@@ -1291,11 +1302,11 @@ func bind_while_statement(binder: Binder, whileStatement: WhileStatement): Bound
 }
 
 func bind_return_statement(binder: Binder, returnStatement: ReturnStatement): Object {
-    if (binder.currentFunction == null) {
+    if (binder.currentFunction is null) {
         PANIC("Missing current function context", binder.diagnostics);
     }
 
-    if (type_eq_type(binder.currentFunction.returnType, binder.voidType) && returnStatement.value != null) {
+    if (type_eq_type(binder.currentFunction.returnType, binder.voidType) && !(returnStatement.value is null)) {
         report_cannot_return_value_from_void(binder.diagnostics, returnStatement.keyword.span);
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
@@ -1303,7 +1314,7 @@ func bind_return_statement(binder: Binder, returnStatement: ReturnStatement): Ob
         return node;
     }
 
-    if (!type_eq_type(binder.currentFunction.returnType, binder.voidType) && returnStatement.value == null) {
+    if (!type_eq_type(binder.currentFunction.returnType, binder.voidType) && returnStatement.value is null) {
         report_must_return_value_from_non_void(binder.diagnostics, returnStatement.keyword.span);
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
@@ -1312,7 +1323,7 @@ func bind_return_statement(binder: Binder, returnStatement: ReturnStatement): Ob
     }
 
     let value: Object = null;
-    if (returnStatement.value != null) {
+    if (!(returnStatement.value is null)) {
         value = bind_expression(binder, returnStatement.value, binder.currentFunction.returnType);
     }
 
@@ -1457,7 +1468,7 @@ func bind_type_member_signature(binder: Binder, typeMember: TypeMember): void {
 func bind_type_member(binder: Binder, typeMember: TypeMember): BoundTypeMember {
     let dataType: DataType = scope_lookup_type(binder.currentScope, typeMember.identifier.value, null);
 
-    if (dataType.definition == null || !(dataType.definition is BoundTypeMember)) {
+    if (dataType.definition is null || !(dataType.definition is BoundTypeMember)) {
         PANIC("Cannot find Type", binder.diagnostics);
     }
 
@@ -1567,7 +1578,7 @@ func bind_function_member_signature(binder: Binder, functionMember: FunctionMemb
 
 func bind_function_member(binder: Binder, functionMember: FunctionMember): BoundFunctionMember {
     let function: BoundFunctionMember = scope_lookup_function(binder.currentScope, functionMember.identifier.value);
-    if (function == null) {
+    if (function is null) {
         PANIC("Cannot find function", binder.diagnostics);
     }
 

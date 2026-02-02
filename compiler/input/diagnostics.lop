@@ -449,6 +449,15 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
         fs_write_string(fd, "Break statements are not allowed here");
     } else if (code == DiagnosticCode.CONTINUE_NOT_ALLOWED) {
         fs_write_string(fd, "Continue statements are not allowed here");
+    } else if (code == DiagnosticCode.NOT_COMPATIBLE) {
+        let from: DataType = <DataType>list_get_value(args, 0);
+        let to: DataType = <DataType>list_get_value(args, 1);
+
+        fs_write_string(fd, "Cannot cast type '");
+        fs_write_string(fd, from.name);
+        fs_write_string(fd, "' to '");
+        fs_write_string(fd, to.name);
+        fs_write_string(fd, "' implictly. (Are you missing a cast?)");
     }
 }
 

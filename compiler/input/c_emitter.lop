@@ -62,7 +62,7 @@ func emit_header(emitter: Emitter): void {
 
 func emit_type(emitter: Emitter, dataType: DataType): void {
     if (string_equals(dataType.name, "Span")) {
-        if (dataType.generics == null) {
+        if (dataType.generics is null) {
             PANIC("Missing generic type", null);
         }
 
@@ -100,7 +100,7 @@ func emit_paren_expression(emitter: Emitter, parenExpression: BoundParenExpressi
 func emit_ctor_expression(emitter: Emitter, ctorExpression: BoundCtorExpression): void {
     let returnType: DataType = RETURN_TYPE(ctorExpression);
     
-    if (returnType.definition == null || !(returnType.definition is BoundTypeMember)) {
+    if (returnType.definition is null || !(returnType.definition is BoundTypeMember)) {
         PANIC("Definition must be set", null);
     }
 
@@ -200,6 +200,11 @@ func emit_is_expression(emitter: Emitter, isExpression: BoundIsExpression): void
     write(emitter, "_type");
 }
 
+func emit_is_null_expression(emitter: Emitter, isNullExpression: BoundIsNullExpression): void {
+    emit_expression(emitter, isNullExpression.left);
+    write(emitter, " == NULL");
+}
+
 func emit_enum_field_expression(emitter: Emitter, enumFieldExpression: BoundEnumFieldExpression): void {
     write(emitter, enumFieldExpression.name);
     write(emitter, "_");
@@ -262,6 +267,8 @@ func emit_expression(emitter: Emitter, expression: Object): void {
         emit_member_expression(emitter, <BoundMemberExpression>expression);
     } else if (expression is BoundIsExpression) {
         emit_is_expression(emitter, <BoundIsExpression>expression);
+    } else if (expression is BoundIsNullExpression) {
+        emit_is_null_expression(emitter, <BoundIsNullExpression>expression);
     } else if (expression is BoundEnumFieldExpression) {
         emit_enum_field_expression(emitter, <BoundEnumFieldExpression>expression);
     } else if (expression is BoundIntegerExpression) {
@@ -298,7 +305,7 @@ func emit_if_statement(emitter: Emitter, ifStatement: BoundIfStatement): void {
     writeln(emitter, ")");
     emit_statement(emitter, ifStatement.thenCase);
 
-    if (ifStatement.elseCase != null) {
+    if (!(ifStatement.elseCase is null)) {
         writeln_intended(emitter, "else");
         emit_statement(emitter, ifStatement.elseCase);
     }
@@ -313,7 +320,7 @@ func emit_while_statement(emitter: Emitter, whileStatement: BoundWhileStatement)
 }
 
 func emit_return_statement(emitter: Emitter, returnStatement: BoundReturnStatement): void {
-    if (emitter.currentFunction == null) {
+    if (emitter.currentFunction is null) {
         PANIC("Requires current function", null);
     }
     if (emitter.currentFunction.requiresGC) {
@@ -321,7 +328,7 @@ func emit_return_statement(emitter: Emitter, returnStatement: BoundReturnStateme
     }
 
     write_intended(emitter, "return");
-    if (returnStatement.value != null) {
+    if (!(returnStatement.value is null)) {
         write(emitter, " ");
         emit_expression(emitter, returnStatement.value);
     }
@@ -366,7 +373,7 @@ func emit_statement(emitter: Emitter, statement: Object): void {
 }
 
 func emit_track_func_type(emitter: Emitter, dataType: DataType): void {
-    if (dataType.generics == null) {
+    if (dataType.generics is null) {
         PANIC("Func type must have generic parameters", null);
     }
 

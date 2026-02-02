@@ -67,24 +67,24 @@ func conversion_classify(binder: Binder, from: DataType, to: DataType, explicit:
     }
 
     // Type <--> Object
-    if (from.definition != null && from.definition is BoundTypeMember && type_eq_type(to, binder.objectType)) {
+    if (!(from.definition is null) && from.definition is BoundTypeMember && type_eq_type(to, binder.objectType)) {
         let list: ObjectList = list_init();
         list_push(list, rule_init(from, to, ConversionKind.IMPLICIT));
         return list;
     }
-    if (explicit && type_eq_type(from, binder.objectType) && to.definition != null && to.definition is BoundTypeMember) {
+    if (explicit && type_eq_type(from, binder.objectType) && !(to.definition is null) && to.definition is BoundTypeMember) {
         let list: ObjectList = list_init();
         list_push(list, rule_init(from, to, ConversionKind.EXPLICIT));
         return list;
     }
 
     // Enum field <--> i32
-    if (from.definition != null && from.definition is BoundEnumMember && type_eq_type(to, binder.i32Type)) {
+    if (!(from.definition is null) && from.definition is BoundEnumMember && type_eq_type(to, binder.i32Type)) {
         let list: ObjectList = list_init();
         list_push(list, rule_init(from, to, ConversionKind.IMPLICIT));
         return list;
     }
-    if (explicit && type_eq_type(from, binder.i32Type) && to.definition != null && to.definition is BoundEnumMember) {
+    if (explicit && type_eq_type(from, binder.i32Type) && !(to.definition is null) && to.definition is BoundEnumMember) {
         let list: ObjectList = list_init();
         list_push(list, rule_init(from, to, ConversionKind.EXPLICIT));
         return list;
