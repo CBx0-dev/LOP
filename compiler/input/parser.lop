@@ -13,6 +13,21 @@ type CompilationUnit {
     eof: Token;
 }
 
+type NamedImportMemberItem {
+    identifier: Token;
+    comma: Token;
+}
+
+type NamedImportMember {
+    keyword: Token;
+    lBrace: Token;
+    items: ObjectList;
+    rBrace: Token;
+    from_: Token;
+    module: Token;
+    semicolons: ObjectList;
+}
+
 type TypeMemberItem {
     identifier: Token;
     typeClause: TypeClause;
@@ -1136,12 +1151,50 @@ func parse_enum_member(parser: Parser): EnumMember {
     return enumMember;
 }
 
+func parse_import_member(parser: Parser): NamedImportMember {
+    let keyword: Token = match_token(parser, TokenKind.IMPORT_KEYWORD);
+    let lBrace: Token = match_token(parser, TokenKind.LBRACE);
+
+    let items: ObjectList = list_init();
+    while(current_token(parser).kind != TokenKind.RBRACE && parser_is_eof(parser)) {
+        let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
+        let comma: Token = null;
+        if (current_token(parser).kind != TokenKind.RBRACE) {
+            comma = match_token(parser, TokenKind.COMMA);
+        }
+
+        let item: NamedImportMemberItem = new NamedImportMemberItem();
+
+        item.identifier = identifier;
+        item.comma = comma;
+
+        list_push(items, item);
+    }
+
+    let rBrace: Token = match_token(parser, TokenKind.RBRACE);
+    let from_: Token = match_token(parser, TokenKind.FROM_KEYWORD);
+    let module: Token = match_token(parser, TokenKind.STRING_LITERAL);
+    let semicolons: ObjectList = parse_semicolon_block(parser, true);
+
+    let node: NamedImportMember = new NamedImportMember();
+
+    node.keyword = keyword;
+    node.lBrace = lBrace;
+    node.rBrace = rBrace;
+    node.from_ = from_;
+    node.module = module;
+    node.semicolons = semicolons;
+
+    return node;
+}
+
 func parse_compilation_unit(parser: Parser): CompilationUnit {
     let externFunctions: ObjectList = list_init();
     let externTypes: ObjectList = list_init();
     let functions: ObjectList = list_init();
     let types: ObjectList = list_init();
     let enums: ObjectList = list_init();
+    let imports: ObjectList = list_init();
 
     while (current_token(parser).kind != TokenKind.EOF && !parser_is_eof(parser)) {
         let kind: TokenKind = current_token(parser).kind;
@@ -1167,6 +1220,10 @@ func parse_compilation_unit(parser: Parser): CompilationUnit {
         }
         if (kind == TokenKind.ENUM_KEYWORD) {
             list_push(enums, parse_enum_member(parser));
+            continue;
+        }
+        if (kind == TokenKind.IMPORT_KEYWORD) {
+            list_push(imports, parse_import_member(parser));
             continue;
         }
 
