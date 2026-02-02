@@ -229,10 +229,10 @@ func report_continue_not_allowed(bag: DiagnosticBag, span: LocationSpan): void {
     list_push(bag.list, diagnostic);
 }
 
-func report_not_compatible(bag: DiagnosticBag, span: LocationSpan, from: DataType, to: DataType): void {
+func report_not_compatible(bag: DiagnosticBag, span: LocationSpan, input: DataType, output: DataType): void {
     let args: ObjectList = list_init();
-    list_push(args, from);
-    list_push(args, to);
+    list_push(args, input);
+    list_push(args, output);
 
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_COMPATIBLE, span, args);
     list_push(bag.list, diagnostic);
@@ -456,13 +456,13 @@ func diagnostic_print_code_message(fd: Object, code: DiagnosticCode, args: Objec
     } else if (code == DiagnosticCode.CONTINUE_NOT_ALLOWED) {
         fs_write_string(fd, "Continue statements are not allowed here");
     } else if (code == DiagnosticCode.NOT_COMPATIBLE) {
-        let from: DataType = <DataType>list_get_value(args, 0);
-        let to: DataType = <DataType>list_get_value(args, 1);
+        let input: DataType = <DataType>list_get_value(args, 0);
+        let output: DataType = <DataType>list_get_value(args, 1);
 
         fs_write_string(fd, "Cannot cast type '");
-        fs_write_string(fd, from.name);
+        fs_write_string(fd, input.name);
         fs_write_string(fd, "' to '");
-        fs_write_string(fd, to.name);
+        fs_write_string(fd, output.name);
         fs_write_string(fd, "' implictly. (Are you missing a cast?)");
     }
 }

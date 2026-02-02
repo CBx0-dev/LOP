@@ -1119,7 +1119,7 @@ func bind_conversion(boundExpression: Object, conversions: ObjectList): Object {
 
         let node: BoundCastExpression = new BoundCastExpression();
 
-        node.returnType = conversion.to;
+        node.returnType = conversion.output;
         node.expression = innerExpression;
         node.rule = conversion;
 

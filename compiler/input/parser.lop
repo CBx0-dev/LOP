@@ -2,14 +2,23 @@ type Parser {
     diagnostics: DiagnosticBag;
     tokens: ObjectList;
     iterator: ObjectListIterator;
+    imports: ObjectList;
+    externFunctions: ObjectList;
+    externTypes: ObjectList;
+    enums: ObjectList;
+    functions: ObjectList;
+    types: ObjectList;
+    exports: ObjectList;
 }
 
 type CompilationUnit {
+    imports: ObjectList;
     externTypes: ObjectList;
     types: ObjectList;
     externFunctions: ObjectList;
     functions: ObjectList;
     enums: ObjectList;
+    exports: ObjectList;
     eof: Token;
 }
 
@@ -26,6 +35,11 @@ type NamedImportMember {
     from_: Token;
     module: Token;
     semicolons: ObjectList;
+}
+
+type ExportMember {
+    keyword: Token;
+    member: Object;
 }
 
 type TypeMemberItem {
@@ -293,6 +307,13 @@ func parser_init(diagnostics: DiagnosticBag, filename: String, content: String):
     parser.diagnostics = diagnostics;
     parser.tokens = tokens;
     parser.iterator = iterator;
+    parser.imports = list_init();
+    parser.externFunctions = list_init();
+    parser.externTypes = list_init();
+    parser.enums = list_init();
+    parser.functions = list_init();
+    parser.types = list_init();
+    parser.exports = list_init();
     
     return parser;
 }
@@ -1188,57 +1209,72 @@ func parse_import_member(parser: Parser): NamedImportMember {
     return node;
 }
 
-func parse_compilation_unit(parser: Parser): CompilationUnit {
-    let externFunctions: ObjectList = list_init();
-    let externTypes: ObjectList = list_init();
-    let functions: ObjectList = list_init();
-    let types: ObjectList = list_init();
-    let enums: ObjectList = list_init();
-    let imports: ObjectList = list_init();
+func parse_exportable_member(parser: Parser): Object {
+    let kind: TokenKind = current_token(parser).kind;
 
+    if (kind == TokenKind.EXTERN_KEYWORD) {
+        if (peek_token(parser).kind == TokenKind.FUNCTION_KEYWORD) {
+            let node: Object = parse_extern_function_member(parser);
+            list_push(parser.externFunctions, node);
+            return node;
+        }
+        if (peek_token(parser).kind == TokenKind.TYPE_KEYWORD) {
+            let node: Object = parse_extern_type_member(parser);
+            list_push(parser.externTypes, node);
+            return node;
+        }
+        
+    } 
+    if (kind == TokenKind.FUNCTION_KEYWORD) {
+        let node: Object = parse_function_member(parser);
+        list_push(parser.functions, node);
+        return node;
+    }
+    if (kind == TokenKind.TYPE_KEYWORD) {
+        let node: Object = parse_type_member(parser);
+        list_push(parser.types, node);
+        return node;
+    }
+    if (kind == TokenKind.ENUM_KEYWORD) {
+        let node: Object = parse_enum_member(parser);
+        list_push(parser.enums, node);
+        return node;
+    }
+
+    PANIC("Unexpected token", parser.diagnostics);
+}
+
+func parse_compilation_unit(parser: Parser): CompilationUnit {
     while (current_token(parser).kind != TokenKind.EOF && !parser_is_eof(parser)) {
         let kind: TokenKind = current_token(parser).kind;
 
-        if (kind == TokenKind.EXTERN_KEYWORD) {
-            if (peek_token(parser).kind == TokenKind.FUNCTION_KEYWORD) {
-                list_push(externFunctions, parse_extern_function_member(parser));
-                continue;
-            }
-            if (peek_token(parser).kind == TokenKind.TYPE_KEYWORD) {
-                list_push(externTypes, parse_extern_type_member(parser));
-                continue;
-            }
-            
-        } 
-        if (kind == TokenKind.FUNCTION_KEYWORD) {
-            list_push(functions, parse_function_member(parser));
-            continue;
-        }
-        if (kind == TokenKind.TYPE_KEYWORD) {
-            list_push(types, parse_type_member(parser));
-            continue;
-        }
-        if (kind == TokenKind.ENUM_KEYWORD) {
-            list_push(enums, parse_enum_member(parser));
-            continue;
-        }
         if (kind == TokenKind.IMPORT_KEYWORD) {
-            list_push(imports, parse_import_member(parser));
-            continue;
-        }
+            list_push(parser.imports, parse_import_member(parser));
+        } else if (kind == TokenKind.EXPORT_KEYWORD) {
+            let keyword: Token = next_token(parser);
+            let member: Object = parse_exportable_member(parser);
 
-        PANIC("Unexpected token", parser.diagnostics);
+            let node: ExportMember = new ExportMember();
+            node.keyword = keyword;
+            node.member = member;
+
+            list_push(parser.exports, node);
+        } else {
+            parse_exportable_member(parser);    
+        }
     }
 
     let eof: Token = match_token(parser, TokenKind.EOF);
 
     let compilationUnit: CompilationUnit = new CompilationUnit();
 
-    compilationUnit.externTypes = externTypes;
-    compilationUnit.types = types;
-    compilationUnit.externFunctions = externFunctions;
-    compilationUnit.functions = functions;
-    compilationUnit.enums = enums;
+    compilationUnit.imports = parser.imports;
+    compilationUnit.externTypes = parser.externTypes;
+    compilationUnit.types = parser.types;
+    compilationUnit.externFunctions = parser.externFunctions;
+    compilationUnit.functions = parser.functions;
+    compilationUnit.enums = parser.enums;
+    compilationUnit.exports = parser.exports;
     compilationUnit.eof = eof;
 
     return compilationUnit;
