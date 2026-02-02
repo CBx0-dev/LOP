@@ -31,6 +31,7 @@ enum DiagnosticCode {
     MUST_RETURN_VALUE_FROM_NON_VOID,
     BREAK_NOT_ALLOWED,
     CONTINUE_NOT_ALLOWED,
+    NOT_COMPATIBLE
 }
 
 type DiagnosticBag {
@@ -225,6 +226,15 @@ func report_break_not_allowed(bag: DiagnosticBag, span: LocationSpan): void {
 
 func report_continue_not_allowed(bag: DiagnosticBag, span: LocationSpan): void {
     let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.CONTINUE_NOT_ALLOWED, span, list_init());
+    list_push(bag.list, diagnostic);
+}
+
+func report_not_compatible(bag: DiagnosticBag, span: LocationSpan, from: DataType, to: DataType): void {
+    let args: ObjectList = list_init();
+    list_push(args, from);
+    list_push(args, to);
+
+    let diagnostic: Diagnostic = diagnostic_init(DiagnosticCode.NOT_COMPATIBLE, span, args);
     list_push(bag.list, diagnostic);
 }
 

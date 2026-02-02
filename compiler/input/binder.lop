@@ -632,7 +632,7 @@ func bind_type_signature_dynamic(binder: Binder, signature: TypeSignature, dynam
         return bind_type_signature_dynamic_span(binder, signature.identifier.span, dynamic);
     }
 
-    report_unknown_dynamic_type(binder.diagnostics, signature.identifier.span, keyword);
+    report_unknown_dynamic_type(binder.diagnostics, signature.span, keyword);
     return binder.errorType;
 }
 
@@ -661,7 +661,7 @@ func bind_type_clause(binder: Binder, typeClause: TypeClause, allowVoid: bool): 
 func bind_ctor_expression(binder: Binder, ctorExpression: CtorExpression): Object {
     let dataType: DataType = bind_type_signature(binder, ctorExpression.typeSignature, false);
     if (dataType.kind != DataTypeKind.OBJECT) {
-        report_invalid_ctor_signature(binder.diagnostics, ctorExpression.keyword.span);
+        report_invalid_ctor_signature(binder.diagnostics, ctorExpression.span);
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -689,7 +689,7 @@ func is_node_assignable(node: Object): bool {
 func bind_assignment_expression(binder: Binder, assignmentExpression: AssignmentExpression): Object {
     let left: Object = bind_expression(binder, assignmentExpression.left, null);
     if (!is_node_assignable(left)) {
-        report_not_assignable(binder.diagnostics, assignmentExpression.operator.span);
+        report_not_assignable(binder.diagnostics, LOCATION_SPAN(assignmentExpression.left));
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         
@@ -844,7 +844,7 @@ func bind_call_expression(binder: Binder, callExpression: CallExpression): Objec
     let callee: Object = bind_expression(binder, callExpression.callee, null);
     let calleeReturnType: DataType = RETURN_TYPE(callee);
     if (!string_equals(calleeReturnType.name, "Func")) {
-        report_expression_not_callable(binder.diagnostics, callExpression.lParen.span);
+        report_expression_not_callable(binder.diagnostics, LOCATION_SPAN(callExpression.callee));
         
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -855,7 +855,7 @@ func bind_call_expression(binder: Binder, callExpression: CallExpression): Objec
     }
 
     if (calleeReturnType.generics.length - 1 != callExpression.arguments.length) {
-        report_argument_count_mismatch(binder.diagnostics, callExpression.lParen.span);
+        report_argument_count_mismatch(binder.diagnostics, LOCATION_SPAN(callExpression.callee));
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -890,7 +890,7 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
 
     let objectReturnType: DataType = RETURN_TYPE(object);
     if (objectReturnType.definition == null) {
-        report_not_accessible(binder.diagnostics, memberExpression.dot.span, objectReturnType);
+        report_not_accessible(binder.diagnostics, LOCATION_SPAN(memberExpression.object), objectReturnType);
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -943,7 +943,7 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
     }
 
     
-    report_not_accessible(binder.diagnostics, memberExpression.dot.span, objectReturnType);
+    report_not_accessible(binder.diagnostics, LOCATION_SPAN(memberExpression.object), objectReturnType);
 
     let node: BoundEmptyExpression = new BoundEmptyExpression();
     node.returnType = binder.errorType;
@@ -953,7 +953,7 @@ func bind_member_expression(binder: Binder, memberExpression: MemberExpression):
 func bind_is_expression(binder: Binder, isExpression: IsExpression): Object {
     let left: Object = bind_expression(binder, isExpression.left, null);
     if (RETURN_TYPE(left).kind != DataTypeKind.OBJECT) {
-        report_cannot_use_is_with_non_object(binder.diagnostics, isExpression.keyword.span);
+        report_cannot_use_is_with_non_object(binder.diagnostics, isExpression.typeSignature.span);
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -1069,7 +1069,7 @@ func bind_identifier_expression(binder: Binder, literalExpression: LiteralExpres
         }
     }
 
-    report_symbol_not_found(binder.diagnostics, literalExpression.value.span, literalExpression.value.value);
+    report_symbol_not_found(binder.diagnostics, literalExpression.span, literalExpression.value.value);
 
     let node: BoundEmptyExpression = new BoundEmptyExpression();
     node.returnType = binder.errorType;
@@ -1093,7 +1093,7 @@ func bind_cast_expression(binder: Binder, castExpression: CastExpression): Objec
 
     let conversions: ObjectList = conversion_classify(binder, RETURN_TYPE(expression), targetType, true);
     if (conversions == null) {
-        report_expression_not_castable(binder.diagnostics, castExpression.lAngle.span);
+        report_expression_not_castable(binder.diagnostics, LOCATION_SPAN(castExpression.expression));
 
         let node: BoundEmptyExpression = new BoundEmptyExpression();
         node.returnType = binder.errorType;
@@ -1176,10 +1176,16 @@ func bind_expression(binder: Binder, expression: Object, expectedType: DataType)
         SET_RETURN_TYPE(boundExpression, expectedType);
     }
 
+    let expressionType: DataType = RETURN_TYPE(boundExpression);
+
     if (expectedType != null && !type_eq_type(RETURN_TYPE(boundExpression), expectedType)) {
-        let conversions: ObjectList = conversion_classify(binder, RETURN_TYPE(boundExpression), expectedType, false);
+        let conversions: ObjectList = conversion_classify(binder, expressionType, expectedType, false);
         if (conversions == null || conversions.length == 0) {
-            PANIC("Not compatible expression", binder.diagnostics);
+            report_not_compatible(binder.diagnostics, LOCATION_SPAN(expression), expressionType, expectedType);
+            
+            let node: BoundEmptyExpression = new BoundEmptyExpression();
+            node.returnType = binder.errorType;
+            return node;
         }
 
         return bind_conversion(boundExpression, conversions);
