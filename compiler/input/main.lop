@@ -4,7 +4,7 @@ extern func gc_mark_sweep(): void;
 
 extern func string_dump(str: String): void;
 extern func string_concat(left: String, right: String): String;
-extern func string_substring(left: String, start: i32, end: i32): String;
+extern func string_substring(str: String, start: i32, end: i32): String;
 extern func string_char_at(left: String, index: i32): char;
 extern func string_equals(left: String, right: String): bool;
 
@@ -15,32 +15,42 @@ extern type String {
     length: i32;
 }
 
+func path_dirname(path: String): String {
+    let i: i32 = 0;
+    let lastSeperator: i32 = path.length;
+    while (i < path.lenght) {
+        let c: char = string_char_at(path, i);
+        if (c == '/') {
+            lastSeperator = i;
+        }
+    }
+
+    return string_substring(path, 0, lastSeperator);
+}
+
+func path_join(a: String, b: String): String {
+    return string_concat(a, b);
+}
+
 func entry(args: ObjectList): i32 {
-    let iter: ObjectListIterator = list_iterator(args);
-    // Remove arg0 pointing to executable
-    list_iterator_next(iter);
-    if (!list_iterator_has_next(iter)) {
+    if (args.length < 3) {
+        string_dump("Usage lopc <input> <output>");
         return 1;
     }
 
-    let output: String = <String>list_iterator_next(iter);
-	let diagnostics: DiagnosticBag = diagnosticBag_init();
-    
-    let units: ObjectList = list_init();
-    while (list_iterator_has_next(iter)) {
-        let file: String = <String>list_iterator_next(iter);
+    let input: String = <String>list_get_value(args, 1);
+    let inputFolder: String = path_dirname(input);
+    let output: String = <String>list_get_value(args, 2);
 
-        let content: String = fs_read_file(file);
-		let diagnosticCount: i32 = diagnostics.list.length;
-        let parser: Parser = parser_init(diagnostics, file, content);
-        
-		if (diagnosticCount != diagnostics.list.length) {
-			continue;
-		}
-		
-		let unit: CompilationUnit = parse_compilation_unit(parser);
-		
-        list_push(units, unit);
+	let diagnostics: DiagnosticBag = diagnosticBag_init();
+    let content: String = fs_read_file(input);
+    let parser: Parser = parser_init(diagnostics, input, content);
+    let unit: CompilationUnit = parse_compilation_unit(parser);
+    
+    let importIter: ObjectListIterator = list_iterator(unit.imports);
+    while (list_iterator_has_next(importIter)) {
+        let import: NamedImportMember = <NamedImportMember>list_iterator_next(importIter);
+        let lookupPath: String = path_join(inputFolder, import.module.value);
     }
 
     if (diagnostics.list.length > 0) {
@@ -48,11 +58,7 @@ func entry(args: ObjectList): i32 {
         return 1;
     }
 
-    if (units.length == 0) {
-        return 1;
-    }
-
-    let binder: Binder = binder_init(diagnostics, units);
+    let binder: Binder = binder_init(diagnostics, unit);
     let program: BoundProgram = binder_bind(binder);
 
     if (diagnostics.list.length > 0) {
@@ -60,12 +66,12 @@ func entry(args: ObjectList): i32 {
         return 1;
     }
 
-    let outputFile: Object = fs_open_file(output);
+    let outputDescriptor: Object = fs_open_file(output);
+    let emitter: Emitter = emitter_init(outputDescriptor);
 
-    let emitter: Emitter = emitter_init(outputFile);
     emit_program(emitter, program);
 
-    fs_close_file(outputFile);
+    fs_close_file(outputDescriptor);
 
     return 0;
 }

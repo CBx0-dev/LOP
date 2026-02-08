@@ -5,7 +5,7 @@ type BinderFlags {
 }
 
 type Binder {
-    units: ObjectList;
+    unit: CompilationUnit;
     trackedTypes: ObjectList;
     
     diagnostics: DiagnosticBag;
@@ -406,7 +406,7 @@ func binary_operator_init(tokenKind: TokenKind, leftType: DataType, rightType: D
     return operator;
 }
 
-func binder_init(diagnostics: DiagnosticBag, units: ObjectList): Binder {
+func binder_init(diagnostics: DiagnosticBag, unit: CompilationUnit): Binder {
     let scope: Scope = scope_init(null);
 
     let errorType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "?", "?");
@@ -531,7 +531,7 @@ func binder_init(diagnostics: DiagnosticBag, units: ObjectList): Binder {
 
     let binder: Binder = new Binder();
     
-    binder.units = units;
+    binder.unit = unit;
     binder.trackedTypes = list_init();
     binder.diagnostics = diagnostics;
     binder.rootScope = scope;
@@ -1605,94 +1605,66 @@ func binder_bind(binder: Binder): BoundProgram {
     let functions: ObjectList = list_init();
     
     {    
-        // Bind enums
-        let iter: ObjectListIterator = list_iterator(binder.units);
-        while (list_iterator_has_next(iter)) {
-            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
-            let iter: ObjectListIterator = list_iterator(unit.enums);
-            while(list_iterator_has_next(iter)) {
-                let enumMember: EnumMember = <EnumMember>list_iterator_next(iter);
-                list_push(enums, bind_enum_member(binder, enumMember));
-            }
+        // Bind enums;
+        let iter: ObjectListIterator = list_iterator(binder.unit.enums);
+        while(list_iterator_has_next(iter)) {
+            let enumMember: EnumMember = <EnumMember>list_iterator_next(iter);
+            list_push(enums, bind_enum_member(binder, enumMember));
         }
     }
 
     {
         // TODO split in signatue and body checking like in normal types
         // Bind extern types
-        let iter: ObjectListIterator = list_iterator(binder.units);
-        while (list_iterator_has_next(iter)) {
-            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
-            let iter: ObjectListIterator = list_iterator(unit.externTypes);
-            while(list_iterator_has_next(iter)) {
-                let externType: ExternTypeMember = <ExternTypeMember>list_iterator_next(iter);
-                list_push(externTypes, bind_extern_type_member(binder, externType));
-            }
+        let iter: ObjectListIterator = list_iterator(binder.unit.externTypes);
+        while(list_iterator_has_next(iter)) {
+            let externType: ExternTypeMember = <ExternTypeMember>list_iterator_next(iter);
+            list_push(externTypes, bind_extern_type_member(binder, externType));
         }
     }
 
     {
         // Bind type signatures
-        let iter: ObjectListIterator = list_iterator(binder.units);
-        while (list_iterator_has_next(iter)) {
-            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
-            let iter: ObjectListIterator = list_iterator(unit.types);
-            while(list_iterator_has_next(iter)) {
-                let typeMember: TypeMember = <TypeMember>list_iterator_next(iter);
-                bind_type_member_signature(binder, typeMember);
-            }
+        let iter: ObjectListIterator = list_iterator(binder.unit.types);
+        while(list_iterator_has_next(iter)) {
+            let typeMember: TypeMember = <TypeMember>list_iterator_next(iter);
+            bind_type_member_signature(binder, typeMember);
         }
     }
 
     {
         // Bind types
-        let iter: ObjectListIterator = list_iterator(binder.units);
-        while (list_iterator_has_next(iter)) {
-            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
-            let iter: ObjectListIterator = list_iterator(unit.types);
-            while(list_iterator_has_next(iter)) {
-                let typeMember: TypeMember = <TypeMember>list_iterator_next(iter);
-                list_push(types, bind_type_member(binder, typeMember));
-            }
+        let iter: ObjectListIterator = list_iterator(binder.unit.types);
+        while(list_iterator_has_next(iter)) {
+            let typeMember: TypeMember = <TypeMember>list_iterator_next(iter);
+            list_push(types, bind_type_member(binder, typeMember));
         }
     }
 
     {
         // Bind extern functions
-        let iter: ObjectListIterator = list_iterator(binder.units);
-        while (list_iterator_has_next(iter)) {
-            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
-            let iter: ObjectListIterator = list_iterator(unit.externFunctions);
-            while(list_iterator_has_next(iter)) {
-                let externFunction: ExternFunctionMember = <ExternFunctionMember>list_iterator_next(iter);
-                list_push(externFunctions, bind_extern_function_member(binder, externFunction));
-            }
+        let iter: ObjectListIterator = list_iterator(binder.unit.externFunctions);
+        while(list_iterator_has_next(iter)) {
+            let externFunction: ExternFunctionMember = <ExternFunctionMember>list_iterator_next(iter);
+            list_push(externFunctions, bind_extern_function_member(binder, externFunction));
         }
     }
 
     {
         // Bind function signatures
-        let iter: ObjectListIterator = list_iterator(binder.units);
-        while (list_iterator_has_next(iter)) {
-            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
-            let iter: ObjectListIterator = list_iterator(unit.functions);
-            while(list_iterator_has_next(iter)) {
-                let function: FunctionMember = <FunctionMember>list_iterator_next(iter);
-                bind_function_member_signature(binder, function);
-            }
+        let iter: ObjectListIterator = list_iterator(binder.unit.functions);
+        while(list_iterator_has_next(iter)) {
+            let function: FunctionMember = <FunctionMember>list_iterator_next(iter);
+            bind_function_member_signature(binder, function);
         }
     }
 
     {
         // Bind functions
-        let iter: ObjectListIterator = list_iterator(binder.units);
-        while (list_iterator_has_next(iter)) {
-            let unit: CompilationUnit = <CompilationUnit>list_iterator_next(iter);
-            let iter: ObjectListIterator = list_iterator(unit.functions);
-            while(list_iterator_has_next(iter)) {
-                let function: FunctionMember = <FunctionMember>list_iterator_next(iter);
-                list_push(functions, bind_function_member(binder, function));
-            }
+        let iter: ObjectListIterator = list_iterator(binder.unit.functions);
+        while(list_iterator_has_next(iter)) {
+            let function: FunctionMember = <FunctionMember>list_iterator_next(iter);
+            list_push(functions, bind_function_member(binder, function));
         }
     }
 
