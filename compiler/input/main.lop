@@ -18,11 +18,12 @@ extern type String {
 func path_dirname(path: String): String {
     let i: i32 = 0;
     let lastSeperator: i32 = path.length;
-    while (i < path.lenght) {
+    while (i < path.length) {
         let c: char = string_char_at(path, i);
         if (c == '/') {
-            lastSeperator = i;
+            lastSeperator = i + 1;
         }
+        i = i + 1;
     }
 
     return string_substring(path, 0, lastSeperator);
@@ -46,11 +47,30 @@ func entry(args: ObjectList): i32 {
     let content: String = fs_read_file(input);
     let parser: Parser = parser_init(diagnostics, input, content);
     let unit: CompilationUnit = parse_compilation_unit(parser);
-    
+    let importedModules: ObjectList = list_init();
+
     let importIter: ObjectListIterator = list_iterator(unit.imports);
     while (list_iterator_has_next(importIter)) {
-        let import: NamedImportMember = <NamedImportMember>list_iterator_next(importIter);
-        let lookupPath: String = path_join(inputFolder, import.module.value);
+        let importMember: NamedImportMember = <NamedImportMember>list_iterator_next(importIter);
+        // Dewrap string "<value>" -> <value>
+        let module: String = string_substring(importMember.module.value, 1, importMember.module.value.length - 1);
+        if (string_char_at(module, 0) != '.') {
+            PANIC("Import path for now must be relative", diagnostics);
+        }
+        let importPath: String = path_join(inputFolder, module);
+        let importContent: String = fs_read_file(importPath);
+
+        let parser: Parser = parser_init(diagnostics, importPath, importContent);
+        let importUnit: CompilationUnit = parse_compilation_unit(parser);
+        if (diagnostics.list.length > 0) {
+            diagnostic_print(diagnostics);
+            return 1;
+        }
+
+        let binder: Binder = binder_init(diagnostics, importUnit, list_init());
+        let table: BoundExportTable = binder_bind_export(binder);
+        
+        list_push(importedModules, table);
     }
 
     if (diagnostics.list.length > 0) {
@@ -58,7 +78,7 @@ func entry(args: ObjectList): i32 {
         return 1;
     }
 
-    let binder: Binder = binder_init(diagnostics, unit);
+    let binder: Binder = binder_init(diagnostics, unit, importedModules);
     let program: BoundProgram = binder_bind(binder);
 
     if (diagnostics.list.length > 0) {

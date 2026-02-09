@@ -6,6 +6,7 @@ type BinderFlags {
 
 type Binder {
     unit: CompilationUnit;
+    imports: ObjectList;
     trackedTypes: ObjectList;
     
     diagnostics: DiagnosticBag;
@@ -42,6 +43,14 @@ type BoundProgram {
     externFunctions: ObjectList;
     functions: ObjectList;
     trackedTypes: ObjectList;
+}
+
+type BoundExportTable {
+    enums: ObjectList;
+    externTypes: ObjectList;
+    types: ObjectList;
+    externFunctions: ObjectList;
+    functions: ObjectList;
 }
 
 type BoundEnumMemberItem {
@@ -406,7 +415,7 @@ func binary_operator_init(tokenKind: TokenKind, leftType: DataType, rightType: D
     return operator;
 }
 
-func binder_init(diagnostics: DiagnosticBag, unit: CompilationUnit): Binder {
+func binder_init(diagnostics: DiagnosticBag, unit: CompilationUnit, imports: ObjectList): Binder {
     let scope: Scope = scope_init(null);
 
     let errorType: DataType = type_init_simple(DataTypeKind.PRIMITIVE, "?", "?");
@@ -532,6 +541,7 @@ func binder_init(diagnostics: DiagnosticBag, unit: CompilationUnit): Binder {
     let binder: Binder = new Binder();
     
     binder.unit = unit;
+    binder.imports = imports;
     binder.trackedTypes = list_init();
     binder.diagnostics = diagnostics;
     binder.rootScope = scope;
@@ -1537,7 +1547,7 @@ func bind_extern_function_member(binder: Binder, externFunctionMember: ExternFun
     return node;
 }
 
-func bind_function_member_signature(binder: Binder, functionMember: FunctionMember): void {
+func bind_function_member_signature(binder: Binder, functionMember: FunctionMember): BoundFunctionMember {
     let generics: ObjectList = list_init();
     let returnType: DataType = bind_type_clause(binder, functionMember.returnType, true);
     list_push(generics, returnType);
@@ -1574,6 +1584,7 @@ func bind_function_member_signature(binder: Binder, functionMember: FunctionMemb
     node.functionSignature = functionSignature;
 
     scope_declare_function(binder.rootScope, node);
+    return node;
 }
 
 func bind_function_member(binder: Binder, functionMember: FunctionMember): BoundFunctionMember {
@@ -1604,6 +1615,12 @@ func binder_bind(binder: Binder): BoundProgram {
     let externFunctions: ObjectList = list_init();
     let functions: ObjectList = list_init();
     
+    {
+        // Declare imports
+        
+    }
+
+
     {    
         // Bind enums;
         let iter: ObjectListIterator = list_iterator(binder.unit.enums);
@@ -1678,4 +1695,57 @@ func binder_bind(binder: Binder): BoundProgram {
     node.trackedTypes = binder.trackedTypes;
 
     return node;
+}
+
+func binder_bind_export(binder: Binder): BoundExportTable {
+    let enums: ObjectList = list_init();
+    let externTypes: ObjectList = list_init();
+    let types: ObjectList = list_init();
+    let externFunctions: ObjectList = list_init();
+    let functions: ObjectList = list_init();
+
+    // Stage0 binding
+    let iter: ObjectListIterator = list_iterator(binder.unit.exports);
+    while (list_iterator_has_next(iter)) {
+        let exportItem: ExportMember = <ExportMember>list_iterator_next(iter);
+
+        if (exportItem.member is EnumMember) {
+            list_push(enums, bind_enum_member(binder, <EnumMember>exportItem.member));
+        } else if (exportItem.member is ExternTypeMember) {
+            // TODO split in signatue and body checking like in normal types
+            // Bind extern types
+            list_push(externTypes, bind_extern_type_member(binder, <ExternTypeMember>exportItem.member));
+        } else if (exportItem.member is TypeMember) {
+            // Bind type signatures
+            bind_type_member_signature(binder, <TypeMember>exportItem.member);
+        }
+    }
+
+    // Stage1 binding
+    iter = list_iterator(binder.unit.exports);
+    while (list_iterator_has_next(iter)) {
+        let exportItem: ExportMember = <ExportMember>list_iterator_next(iter);
+        
+        if (exportItem.member is TypeMember) {
+            // Bind types
+            list_push(types, bind_type_member(binder, <TypeMember>exportItem.member));
+        } else if (exportItem.member is ExternFunctionMember) {
+            // Bind extern functions
+            list_push(externFunctions, bind_extern_function_member(binder, <ExternFunctionMember>exportItem.member));
+        } else if (exportItem.member is FunctionMember) {
+            // Bind function signatures
+            list_push(functions, bind_function_member_signature(binder, <FunctionMember>exportItem.member));
+        }
+    }
+
+    let node: BoundExportTable = new BoundExportTable();
+
+    node.enums = enums;
+    node.externTypes = externTypes;
+    node.types = types;
+    node.externFunctions = externFunctions;
+    node.functions = functions;
+
+    return node;
+
 }

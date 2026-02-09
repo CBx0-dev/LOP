@@ -1177,7 +1177,7 @@ func parse_import_member(parser: Parser): NamedImportMember {
     let lBrace: Token = match_token(parser, TokenKind.LBRACE);
 
     let items: ObjectList = list_init();
-    while(current_token(parser).kind != TokenKind.RBRACE && parser_is_eof(parser)) {
+    while(current_token(parser).kind != TokenKind.RBRACE && !parser_is_eof(parser)) {
         let identifier: Token = match_token(parser, TokenKind.IDENTIFIER);
         let comma: Token = null;
         if (current_token(parser).kind != TokenKind.RBRACE) {
